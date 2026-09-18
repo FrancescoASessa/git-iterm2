@@ -43,11 +43,13 @@ this checklist can settle.
 
 ## Toolbelt persistence
 
-- [ ] With the Git tool visible in the toolbelt, quit and reopen iTerm2. Is the tool still
+- [x] With the Git tool visible in the toolbelt, quit and reopen iTerm2. Is the tool still
       present in the toolbelt afterwards, or does it have to be re-added via
       View › Toolbelt › Git each time?
-      Result: ______________________________________________________ (genuinely open --
-      see the related, narrower finding below before assuming this is answered.)
+      Result: present, **provided the script is in `Scripts/AutoLaunch/`**. With the script
+      moved there, a full quit (⌘Q) and reopen restarted it on its own and the panel was
+      back in the toolbelt with no action from the user. Imported to `Scripts/` (the default
+      for a `.zip` import), nothing restarts it. Verified 2026-09-18, iTerm2 3.7.1.
 - [x] **Related but narrower finding (verified 2026-09-18, not a substitute for the check
       above):** a tool's registration persists in iTerm2's *preferences* independently of
       whether the registering script's process is still running -- a probe script's tool
@@ -166,9 +168,11 @@ ref labels, primary button, focus ring) and the diff green/red come from the pro
 Spec §10 leaves this open — it is not exercised by any automated test. With the toolbelt
 panel focused:
 
-- [ ] Type a commit message into the commit textarea. Do the characters land in the
+- [x] Type a commit message into the commit textarea. Do the characters land in the
       textarea?
-      Result: ______________________________________________________
+      Result: yes. Clicking the textarea gives it focus, typed text lands in it rather than
+      in the terminal behind, and committing from the panel worked end to end. Verified
+      2026-09-18, iTerm2 3.7.1.
 - [ ] Press `⌘↵` inside the commit textarea. Does it trigger commit (rather than doing
       nothing, or being intercepted by iTerm2)?
       Result: ______________________________________________________

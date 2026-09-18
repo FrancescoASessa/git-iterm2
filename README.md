@@ -35,11 +35,11 @@ Your terminal already knows which repository you are in. Now your git panel does
 1. Download `GitPanel.zip` from the [latest release](../../releases/latest).
 2. Double-click it, or run `packaging/install.sh <path-or-https-url-to-GitPanel.zip>`.
    Either way, iTerm2 opens its own script-import flow.
-3. **The archive is unsigned** (there is no Apple Developer ID certificate for it; a `.zip`
-   is iTerm2's supported unsigned-import format — `.its` requires a signature we cannot
-   produce). iTerm2 will ask whether to launch the script automatically or manually — this
-   is expected; you must answer it yourself, and nothing in this project bypasses that
-   prompt.
+3. **The archive is unsigned** — there is no Apple Developer ID certificate for it. That is
+   why it ships as a `.zip`: iTerm2 accepts an unsigned `.zip` from an import you start
+   yourself, while `.its` requires a signature. On first import iTerm2 downloads a Python
+   runtime for the script (once, a few hundred MB), then reports *Script Imported
+   Successfully* with a **Launch** button.
 4. **Optional, and worth the ten seconds: check where the archive came from.** Every
    release archive carries a signed [build provenance attestation][attestation] binding it
    to the commit and the GitHub Actions run that produced it. With the
@@ -52,13 +52,22 @@ Your terminal already knows which repository you are in. Now your git panel does
    The `.sha256` published next to the archive only proves your download is intact — it is
    served from the same place as the archive, so it says nothing about who produced it. The
    attestation is what ties the file to this repository. Neither makes macOS or iTerm2 treat
-   the archive as signed: the unsigned-import prompt in step 3 is unchanged.
-5. iTerm2 imports the script to `Scripts/GitPanel`, **not** `Scripts/AutoLaunch/`, so it does
-   not start automatically when iTerm2 launches (verified against a real iTerm2 3.7.1 — see
-   [`docs/ITERM2-FINDINGS.md`](docs/ITERM2-FINDINGS.md)). Launch it from the import dialog's
-   "Launch" button, or later from **Scripts › GitPanel**.
+   the archive as signed.
+5. Press **Launch**, or later start it from **Scripts › GitPanel**.
 6. Show the toolbelt — **View › Show Toolbelt** (`⇧⌘B`) — then tick **View › Toolbelt › Git**.
    These are two separate toggles: ticking the tool alone will not display the toolbelt.
+7. **Make it start with iTerm2** (recommended). iTerm2 imports the script to
+   `Scripts/GitPanel`, not `Scripts/AutoLaunch/`, so out of the box it does not restart when
+   you relaunch iTerm2. Move it once:
+
+   ```sh
+   mkdir -p ~/Library/Application\ Support/iTerm2/Scripts/AutoLaunch
+   mv ~/Library/Application\ Support/iTerm2/Scripts/GitPanel \
+      ~/Library/Application\ Support/iTerm2/Scripts/AutoLaunch/
+   ```
+
+   From the next launch on, the panel is back in the toolbelt on its own. (Verified on a real
+   iTerm2 3.7.1 — see [`docs/ITERM2-FINDINGS.md`](docs/ITERM2-FINDINGS.md).)
 
 [attestation]: https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds
 
