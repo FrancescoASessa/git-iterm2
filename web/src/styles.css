@@ -1,0 +1,330 @@
+:root {
+  --bg: #1c1c1c;
+  --fg: #d8d8d8;
+  --selection: #33414e;
+  --font: Menlo, monospace;
+  --font-size: 12px;
+  --row-height: 22px;
+  --muted: color-mix(in srgb, var(--fg) 55%, var(--bg));
+  --border: color-mix(in srgb, var(--fg) 18%, var(--bg));
+  --add: var(--ansi-2);
+  --del: var(--ansi-1);
+  --accent: var(--ansi-4);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: var(--font-size) / calc(var(--font-size) * 1.45) var(--font);
+  overflow-x: hidden;
+}
+
+button {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+button:hover:not(:disabled) {
+  background: var(--selection);
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+input,
+textarea {
+  background: color-mix(in srgb, var(--fg) 8%, var(--bg));
+  color: var(--fg);
+  border: 1px solid var(--border);
+  font: inherit;
+  width: 100%;
+  padding: 2px 4px;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+.panel {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--row-height);
+  padding: 0 6px;
+  white-space: nowrap;
+}
+.row.selected {
+  background: var(--selection);
+}
+.row .grow {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.muted {
+  color: var(--muted);
+}
+.section-title {
+  color: var(--muted);
+  padding: 2px 6px;
+  text-transform: uppercase;
+  font-size: 0.9em;
+}
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.tabs button[aria-selected='true'] {
+  border-bottom: 2px solid var(--accent);
+}
+.banner {
+  background: color-mix(in srgb, var(--ansi-3) 25%, var(--bg));
+  padding: 4px 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  /* A fixed height clipped the longer banner texts once they wrapped at 240px. */
+  min-height: var(--row-height);
+}
+.banner-warn {
+  background: color-mix(in srgb, var(--ansi-3) 25%, var(--bg));
+}
+.banner-info {
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg));
+}
+.empty {
+  padding: 12px 6px;
+}
+.header {
+  border-bottom: 1px solid var(--border);
+  gap: 6px;
+}
+.branch {
+  color: var(--accent);
+}
+/* The head label is the header's only unbounded item: without a floor of zero
+   it pushed Fetch / Pull / Push past a 240px viewport (measured 247px). */
+.header .branch {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.toasts {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.toast {
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--del) 18%, var(--bg));
+}
+.toast-info {
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg));
+}
+.toast-detail {
+  margin: 0;
+  padding: 4px 6px;
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dialog {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  padding: 8px;
+  max-width: 90%;
+}
+.dialog h2 {
+  font-size: 1em;
+  margin: 0 0 4px;
+}
+.dialog-actions {
+  justify-content: flex-end;
+  height: auto;
+}
+button.danger {
+  color: var(--del);
+}
+.commit-box {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.commit-box textarea {
+  resize: vertical;
+}
+.file-row .path {
+  text-align: left;
+}
+/* A branch row carries a name, optional ahead/behind counters, the last commit
+   subject and three text buttons — more than 240px can hold on one line. The
+   subject collapses first (flex-basis 0, so it never forces a wrap), the name
+   keeps a readable floor, and whatever still does not fit wraps onto another
+   line so Rename / Upstream / Delete stay inside the panel. */
+.branch-row {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: var(--row-height);
+}
+.branch-row .grow {
+  flex: 0 1 auto;
+  min-width: 6em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.branch-row .muted {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.status {
+  width: 1em;
+  text-align: center;
+}
+.status-M {
+  color: var(--ansi-3);
+}
+.status-A {
+  color: var(--add);
+}
+.status-D {
+  color: var(--del);
+}
+.status-U {
+  color: var(--ansi-5);
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.diff {
+  border-top: 1px solid var(--border);
+}
+.diff-toolbar {
+  border-bottom: 1px solid var(--border);
+}
+.diff-note {
+  padding: 2px 6px;
+  color: var(--ansi-3);
+}
+.diff-line {
+  display: flex;
+  gap: 6px;
+  padding: 0 6px;
+  white-space: pre;
+}
+.diff-line .lineno {
+  width: 3em;
+  text-align: right;
+  color: var(--muted);
+  flex: none;
+}
+.diff-line .code {
+  overflow-x: auto;
+}
+.diff-add {
+  background: color-mix(in srgb, var(--add) 16%, var(--bg));
+}
+.diff-del {
+  background: color-mix(in srgb, var(--del) 16%, var(--bg));
+}
+.diff-header {
+  color: var(--accent);
+}
+.diff-error {
+  padding: 6px;
+  color: var(--del);
+}
+.graph {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.virtual {
+  height: 100%;
+  overflow-y: auto;
+}
+/* A graph row is a <button>, so it shrink-to-fits its nowrap content and grew
+   past the panel (937px at a 240px viewport). Its height is fixed by the
+   virtual list, so it cannot wrap: pin it to the panel width and clip instead. */
+.graph-row {
+  width: 100%;
+  overflow: hidden;
+}
+.graph-row .sha {
+  flex: none;
+}
+/* Ref chips are the only other elastic part of a graph row: let them ellipsise
+   so a long branch label cannot push the subject out of a 240px panel. */
+.graph-row .ref {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.commit-meta {
+  display: block;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.commit-body {
+  margin: 0;
+  padding: 2px 6px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.commit-files .file-row {
+  width: 100%;
+}
+.commit-files .path {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+.ref {
+  flex: none;
+  padding: 0 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 25%, var(--bg));
+  color: var(--accent);
+  font-size: 0.85em;
+}

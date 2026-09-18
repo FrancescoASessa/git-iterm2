@@ -6,3 +6,6 @@ __pycache__/
 .ruff_cache/
 node_modules/
 dist/
+web/.e2e-env.json
+web/test-results/
+web/playwright-report/
