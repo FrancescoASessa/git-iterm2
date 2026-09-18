@@ -27,7 +27,7 @@
     "@testing-library/preact": "^3.2.4",
     "@testing-library/user-event": "^14.5.2",
     "@types/node": "^22.20.3",
-    "eslint": "^9.12.0",
+    "eslint": "^10.10.0",
     "jsdom": "^25.0.0",
     "openapi-typescript": "^7.4.0",
     "prettier": "^3.3.3",
