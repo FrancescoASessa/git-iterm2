@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fails fast, before setting up node or building anything, if the tag
+      # doesn't agree with the version build-its.sh will embed in the
+      # archive (it reads the same backend/pyproject.toml line). Otherwise a
+      # forgotten version bump ships a GitPanel.its that silently reports
+      # the wrong version to everyone who installs the release.
+      - name: Check tag matches backend/pyproject.toml version
+        run: |
+          set -euo pipefail
+
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+
+          PYPROJECT_LINE="$(grep -m1 '^version' backend/pyproject.toml || true)"
+          if [[ -z "${PYPROJECT_LINE}" ]]; then
+            echo "::error::No 'version' line found in backend/pyproject.toml." >&2
+            exit 1
+          fi
+          PYPROJECT_VERSION="$(printf '%s\n' "${PYPROJECT_LINE}" | sed -E "s/^version[[:space:]]*=[[:space:]]*['\"]([^'\"]+)['\"].*/\\1/")"
+          if [[ "${PYPROJECT_VERSION}" == "${PYPROJECT_LINE}" || -z "${PYPROJECT_VERSION}" ]]; then
+            echo "::error::Could not extract a version from backend/pyproject.toml: ${PYPROJECT_LINE}" >&2
+            exit 1
+          fi
+
+          if [[ "${TAG_VERSION}" != "${PYPROJECT_VERSION}" ]]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} (version ${TAG_VERSION}) does not match backend/pyproject.toml's version ${PYPROJECT_VERSION}. Bump pyproject.toml before tagging a release." >&2
+            exit 1
+          fi
+
+          echo "Tag ${GITHUB_REF_NAME} matches backend/pyproject.toml version ${PYPROJECT_VERSION}."
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # No --skip-web-build: this is the job's only SPA build. It runs
+      # `npm ci && npm run build` internally (see packaging/build-its.sh),
+      # so this job never builds the SPA a second time.
+      - name: Build the .its archive
+        run: bash packaging/build-its.sh
+
+      # Pulls this release's notes from the matching CHANGELOG.md section
+      # (Keep a Changelog style: "## [1.2.0]" or "## 1.2.0", with or
+      # without a leading "v"). Fails the job with a clear message instead
+      # of letting softprops/action-gh-release publish a release with an
+      # empty body when the section is missing.
+      - name: Extract release notes from CHANGELOG.md
+        id: notes
+        run: |
+          set -euo pipefail
+
+          VERSION="${GITHUB_REF_NAME#v}"
+          ESCAPED_VERSION="$(printf '%s' "${VERSION}" | sed 's/[.[\*^$/]/\\&/g')"
+          HEADING_PATTERN="^## \[?v?${ESCAPED_VERSION}\]?([[:space:]]|\$)"
+
+          if [[ ! -f CHANGELOG.md ]]; then
+            echo "::error::CHANGELOG.md not found; cannot extract release notes for ${GITHUB_REF_NAME}." >&2
+            exit 1
+          fi
+
+          START_LINE="$(grep -nE "${HEADING_PATTERN}" CHANGELOG.md | head -n1 | cut -d: -f1 || true)"
+          if [[ -z "${START_LINE}" ]]; then
+            echo "::error::CHANGELOG.md has no section for version ${VERSION} (tag ${GITHUB_REF_NAME}). Add a '## ${VERSION}' (or '## [${VERSION}]') section before tagging a release." >&2
+            exit 1
+          fi
+
+          REL_END_LINE="$(tail -n "+$((START_LINE + 1))" CHANGELOG.md | grep -nE '^## ' | head -n1 | cut -d: -f1 || true)"
+          NOTES_FILE="$(mktemp)"
+          if [[ -n "${REL_END_LINE}" ]]; then
+            END_LINE=$((START_LINE + REL_END_LINE - 1))
+            sed -n "$((START_LINE + 1)),${END_LINE}p" CHANGELOG.md > "${NOTES_FILE}"
+          else
+            sed -n "$((START_LINE + 1)),\$p" CHANGELOG.md > "${NOTES_FILE}"
+          fi
+
+          if [[ -z "$(tr -d '[:space:]' < "${NOTES_FILE}")" ]]; then
+            echo "::error::CHANGELOG.md section for version ${VERSION} (tag ${GITHUB_REF_NAME}) is empty." >&2
+            exit 1
+          fi
+
+          echo "notes_file=${NOTES_FILE}" >> "${GITHUB_OUTPUT}"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/GitPanel.its
+            dist/GitPanel.its.sha256
+            packaging/install.sh
+          body_path: ${{ steps.notes.outputs.notes_file }}
+          fail_on_unmatched_files: true
