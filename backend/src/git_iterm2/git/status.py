@@ -75,7 +75,9 @@ def parse_porcelain_v2(output: str) -> ParsedStatus:
     return parsed
 
 
-async def read_snapshot(paths: RepoPaths, theme: Theme | None = None) -> RepoSnapshot:
+async def read_snapshot(
+    paths: RepoPaths, theme: Theme | None = None, shell_integration: bool = True
+) -> RepoSnapshot:
     result = await run_git(
         paths.root, "status", "--porcelain=v2", "--branch", "-z", "--untracked-files=all"
     )
@@ -100,4 +102,5 @@ async def read_snapshot(paths: RepoPaths, theme: Theme | None = None) -> RepoSna
         conflicted=parsed.conflicted,
         stash_count=len(stashes),
         theme=theme,
+        shell_integration=shell_integration,
     )

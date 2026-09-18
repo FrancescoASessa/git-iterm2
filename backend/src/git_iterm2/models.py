@@ -49,6 +49,7 @@ class RepoSnapshot(ApiModel):
     conflicted: list[FileChange]
     stash_count: int
     theme: Theme | None = None
+    shell_integration: bool = True
 
 
 class DiffLine(ApiModel):

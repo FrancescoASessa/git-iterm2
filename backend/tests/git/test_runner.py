@@ -102,6 +102,19 @@ def silent_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return pid_file
 
 
+@pytest.fixture
+def prompt_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> tuple[Path, Path]:
+    """Define `git quick`: records its pid, then finishes on its own shortly
+    after (as a `git commit` running a fast pre-commit hook would), writing
+    a sentinel file right before it exits. If it were killed instead of
+    awaited, the sentinel would never appear."""
+    pid_file = tmp_path / "pid"
+    done_file = tmp_path / "done"
+    alias = f"alias.quick=!echo $$ > '{pid_file}'; sleep 0.3; echo done > '{done_file}'; exit 0"
+    monkeypatch.setattr("git_iterm2.git.runner.BASE_ARGS", (*BASE_ARGS, "-c", alias))
+    return pid_file, done_file
+
+
 async def test_stream_git_idle_timeout_kills_process_group(
     tmp_path: Path, silent_command: Path
 ) -> None:
@@ -123,6 +136,45 @@ async def test_stream_git_cancel_kills_process_group(tmp_path: Path, silent_comm
         return None
 
     task = asyncio.create_task(stream_git(tmp_path, "slow", on_line=on_line))
+    pid = await _read_pid(silent_command)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert await _wait_until_gone(pid)
+
+
+async def test_run_git_cancel_lets_a_prompt_child_finish(
+    tmp_path: Path, prompt_command: tuple[Path, Path]
+) -> None:
+    """`run_git` backs mutating commands (`commit`, `add`, `rebase
+    --continue`, ...). If cancellation killed the child immediately, a
+    `git commit` running a slow-but-finishing pre-commit hook would be
+    SIGKILLed mid-write and leave `.git/index.lock` behind, breaking every
+    later git command until a human deletes it by hand. Cancelling `run_git`
+    must let an already-running child finish on its own (bounded by
+    `_CANCEL_REAP_TIMEOUT`), not kill it out from under a lock it holds."""
+    pid_file, done_file = prompt_command
+    task = asyncio.create_task(run_git(tmp_path, "quick"))
+    pid = await _read_pid(pid_file)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert await _wait_until_gone(pid)
+    assert done_file.read_text().strip() == "done"  # exited on its own, not killed
+
+
+async def test_run_git_cancel_kills_a_child_that_never_exits(
+    tmp_path: Path, silent_command: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A child that's truly wedged (not just finishing up) must still be
+    reaped eventually — just not immediately — so an unreaped subprocess
+    transport can't linger past the owning event loop's lifetime (an
+    unreaped transport is only closed when the garbage collector eventually
+    gets to it, which can happen after the loop has already closed,
+    surfacing as `RuntimeError: Event loop is closed` from
+    `BaseSubprocessTransport.__del__` in unrelated, later tests)."""
+    monkeypatch.setattr("git_iterm2.git.runner._CANCEL_REAP_TIMEOUT", 0.1)
+    task = asyncio.create_task(run_git(tmp_path, "slow"))
     pid = await _read_pid(silent_command)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):

@@ -32,6 +32,7 @@ class RepoController:
         self._status_interval = status_interval
         self._paths: RepoPaths | None = None
         self._theme: Theme | None = None
+        self._shell_integration: bool = True
         self._snapshot: RepoSnapshot | None = None
         self._listeners: list[Listener] = []
         self._locks: dict[Path, asyncio.Lock] = {}
@@ -78,12 +79,18 @@ class RepoController:
         self._theme = theme
         await self.refresh(force=True)
 
+    async def set_shell_integration(self, available: bool) -> None:
+        if available == self._shell_integration:
+            return
+        self._shell_integration = available
+        await self.refresh(force=True)
+
     async def refresh(self, force: bool = False) -> None:
         paths = self._paths
         snapshot: RepoSnapshot | None = None
         if paths is not None:
             try:
-                snapshot = await read_snapshot(paths, self._theme)
+                snapshot = await read_snapshot(paths, self._theme, self._shell_integration)
             except (GitError, OSError):
                 logger.warning("could not read snapshot for %s", paths.root, exc_info=True)
         if paths is not self._paths:

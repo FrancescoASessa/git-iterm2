@@ -11,7 +11,7 @@ import { GraphPanel } from './components/graph/graph-panel'
 import { Header } from './components/header'
 import { StashPanel } from './components/stash/stash-panel'
 import { Tabs } from './components/tabs'
-import { connection, hasRepo, receivedSnapshot } from './state/repo'
+import { connection, hasRepo, receivedSnapshot, shellIntegration } from './state/repo'
 import { activeTab } from './state/ui'
 
 function ActivePanel() {
@@ -46,6 +46,11 @@ export function App() {
           <EmptyState title="Loading…" />
         ) : hasRepo.value ? (
           <ActivePanel />
+        ) : shellIntegration.value === false ? (
+          <EmptyState
+            title="Shell Integration not enabled"
+            hint="iTerm2 cannot tell which directory this session is in. Install it from iTerm2 › Install Shell Integration, then reopen the panel."
+          />
         ) : (
           <EmptyState title="Not a git repository" hint="cd into a repository in this session." />
         )}

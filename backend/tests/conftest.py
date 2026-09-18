@@ -1,8 +1,36 @@
+import logging
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
 from tests.helpers import commit_file, git
+
+
+@pytest.fixture(autouse=True)
+def _restore_git_iterm2_logger_state() -> Iterator[None]:
+    """`configure_logging` (`git_iterm2.logging_setup`) mutates the
+    process-wide `git_iterm2` logger: it replaces its handlers, sets its
+    level from an environment variable, and disables propagation. Restore
+    all three after every test so state from one test (e.g. a panel
+    entry-point test that points a handler at its own `tmp_path`, or
+    disables propagation) can never leak into another -- notably
+    `tests/api/test_security.py::test_token_is_never_logged`, which relies
+    on `caplog` seeing propagated "git_iterm2.*" records.
+    """
+    logger = logging.getLogger("git_iterm2")
+    original_handlers = list(logger.handlers)
+    original_level = logger.level
+    original_propagate = logger.propagate
+    try:
+        yield
+    finally:
+        for handler in logger.handlers:
+            if handler not in original_handlers:
+                handler.close()
+        logger.handlers = original_handlers
+        logger.setLevel(original_level)
+        logger.propagate = original_propagate
 
 
 @pytest.fixture(autouse=True)

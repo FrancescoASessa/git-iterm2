@@ -47,6 +47,7 @@ describe('app shell', () => {
       conflicted: [],
       stash_count: 0,
       theme: null,
+      shell_integration: true,
     }
     expect(snapshot.head.branch).toBe('main')
   })
@@ -74,6 +75,18 @@ describe('app first paint', () => {
     applySnapshot(null)
     expect(await screen.findByText('Not a git repository')).toBeInTheDocument()
     expect(screen.queryByText('Loading…')).not.toBeInTheDocument()
+  })
+
+  it('explains how to enable shell integration when the panel has no path', async () => {
+    render(<App />)
+    // Drive it through the real mechanism rather than poking the signal
+    // directly: a repo snapshot with the flag false, then losing the repo
+    // (a null snapshot), which must carry the flag forward rather than
+    // resetting it.
+    applySnapshot(makeSnapshot({ shell_integration: false }))
+    applySnapshot(null)
+    expect(await screen.findByText('Shell Integration not enabled')).toBeInTheDocument()
+    expect(screen.getByText(/Install Shell Integration/)).toBeInTheDocument()
   })
 
   it('shows the Changes panel once a repository snapshot arrives', async () => {

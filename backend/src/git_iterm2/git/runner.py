@@ -41,6 +41,17 @@ LineHandler = Callable[[str], Awaitable[None]]
 
 _LINE_SPLIT = re.compile(rb"[\r\n]")
 
+_CANCEL_REAP_TIMEOUT = 5.0
+"""Seconds `run_git` waits for a cancelled child to exit on its own before
+killing its process group. Mirrors `_DRAIN_TIMEOUT`
+(`git_iterm2.iterm.focus`) and `_STARTUP_APPLY_TIMEOUT` (`git_iterm2.panel`):
+a hung child must not hang shutdown forever, but `run_git` backs mutating
+commands (`commit`, `add`, `rebase --continue`, ...) whose child may hold
+`.git/index.lock` and be legitimately finishing up (e.g. a pre-commit hook)
+when cancelled. Killing it immediately would strand that lock, breaking
+every later git command until a human deletes it by hand -- so a cancelled
+child is always given this long to finish and release its own locks first."""
+
 
 @dataclass(frozen=True)
 class GitResult:
@@ -87,7 +98,29 @@ async def run_git(
         stderr=asyncio.subprocess.PIPE,
         start_new_session=True,
     )
-    out, err = await proc.communicate(stdin.encode() if stdin is not None else None)
+    try:
+        out, err = await proc.communicate(stdin.encode() if stdin is not None else None)
+    except BaseException:
+        # A cancellation (the panel shutting down, or a bounded `wait_for`
+        # timing out mid-request) must not leave the child — and its pipe
+        # transport — dangling. An unreaped subprocess transport is closed
+        # only when the garbage collector eventually gets to it, which can
+        # happen after the owning event loop has already closed, surfacing
+        # as `RuntimeError: Event loop is closed` from
+        # `BaseSubprocessTransport.__del__` in unrelated, later tests.
+        #
+        # Unlike `stream_git` (network ops only, nothing to lose by killing
+        # immediately), `run_git` also backs mutating commands that can hold
+        # `.git/index.lock`. So: wait, bounded, for the child to finish on
+        # its own first -- only if it's still running after
+        # `_CANCEL_REAP_TIMEOUT` do we kill its process group.
+        if proc.returncode is None:
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(asyncio.shield(proc.wait()), _CANCEL_REAP_TIMEOUT)
+            if proc.returncode is None:
+                _kill_group(proc)
+                await asyncio.shield(proc.wait())
+        raise
     assert proc.returncode is not None
     result = GitResult(
         out.decode("utf-8", "replace"), err.decode("utf-8", "replace"), proc.returncode

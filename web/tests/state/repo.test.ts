@@ -16,6 +16,7 @@ function makeSnapshot(overrides: Partial<RepoSnapshot> = {}): RepoSnapshot {
     conflicted: [],
     stash_count: 0,
     theme: null,
+    shell_integration: true,
     ...overrides,
   }
 }

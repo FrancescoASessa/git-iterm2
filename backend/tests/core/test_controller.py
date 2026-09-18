@@ -105,6 +105,24 @@ async def test_set_theme_is_included_in_snapshot(repo: Path) -> None:
     assert controller.snapshot.theme == theme
 
 
+async def test_shell_integration_flag_reaches_the_snapshot(repo: Path) -> None:
+    controller = RepoController()
+    await controller.set_active_path(repo)
+    assert controller.snapshot is not None
+    assert controller.snapshot.shell_integration is True
+
+    await controller.set_shell_integration(False)
+    assert controller.snapshot is not None
+    assert controller.snapshot.shell_integration is False
+
+    # And back again: the no-op guard in `set_shell_integration` compares
+    # against the *current* value, not just the initial default, so it must
+    # not silently pin the flag once it has gone false.
+    await controller.set_shell_integration(True)
+    assert controller.snapshot is not None
+    assert controller.snapshot.shell_integration is True
+
+
 async def test_remote_op_success(remote_pair: tuple[Path, Path]) -> None:
     repo, _ = remote_pair
     commit_file(repo, "b.txt", "b\n", "second")

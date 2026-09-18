@@ -46,3 +46,4 @@ def test_message_discriminators_are_required() -> None:
         assert "type" in schemas[name]["required"], name
     assert "orig_path" in schemas["FileChange"]["required"]
     assert "theme" in schemas["RepoSnapshot"]["required"]
+    assert "shell_integration" in schemas["RepoSnapshot"]["required"]

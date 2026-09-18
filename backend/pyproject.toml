@@ -10,6 +10,9 @@ dependencies = [
     "pydantic>=2.6",
 ]
 
+[project.optional-dependencies]
+iterm = ["iterm2>=2.7"]
+
 [dependency-groups]
 dev = [
     "mypy>=1.10",
@@ -35,6 +38,13 @@ pythonpath = ["."]
 python_version = "3.11"
 strict = true
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+# `iterm2` is an optional runtime dependency (installed only via the `iterm`
+# extra) with no type stubs; `git_iterm2.iterm.focus` imports it lazily, at
+# runtime only, inside `ActiveSessionTracker.run()`.
+module = "iterm2"
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100

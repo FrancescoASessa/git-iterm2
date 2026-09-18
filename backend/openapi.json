@@ -804,6 +804,11 @@
             "title": "Root",
             "type": "string"
           },
+          "shell_integration": {
+            "default": true,
+            "title": "Shell Integration",
+            "type": "boolean"
+          },
           "staged": {
             "items": {
               "$ref": "#/components/schemas/FileChange"
@@ -871,7 +876,8 @@
           "untracked",
           "conflicted",
           "stash_count",
-          "theme"
+          "theme",
+          "shell_integration"
         ],
         "title": "RepoSnapshot",
         "type": "object"

@@ -309,6 +309,11 @@ export interface components {
             head: components["schemas"]["Head"];
             /** Root */
             root: string;
+            /**
+             * Shell Integration
+             * @default true
+             */
+            shell_integration: boolean;
             /** Staged */
             staged: components["schemas"]["FileChange"][];
             /** Stash Count */

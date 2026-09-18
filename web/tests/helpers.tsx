@@ -1,5 +1,5 @@
 import { runningOps } from '../src/state/ops'
-import { applySnapshot, connection, receivedSnapshot } from '../src/state/repo'
+import { applySnapshot, connection, receivedSnapshot, shellIntegration } from '../src/state/repo'
 import {
   activeTab,
   branchFilter,
@@ -22,6 +22,7 @@ export function makeSnapshot(overrides: Partial<RepoSnapshot> = {}): RepoSnapsho
     conflicted: [],
     stash_count: 0,
     theme: null,
+    shell_integration: true,
     ...overrides,
   }
 }
@@ -31,6 +32,9 @@ export function resetState(): void {
   // applySnapshot flips receivedSnapshot; put it back so a test starts in the
   // pre-first-snapshot state the app really boots in.
   receivedSnapshot.value = false
+  // applySnapshot(null) leaves shellIntegration untouched (a null snapshot
+  // carries no flag); reset it explicitly so tests start from the default.
+  shellIntegration.value = true
   connection.value = 'open'
   runningOps.value = []
   toasts.value = []
