@@ -56,19 +56,25 @@ async def _ref_exists(root: Path, ref: str) -> bool:
     return result.returncode == 0
 
 
-async def checkout_branch(root: Path, branch: str) -> None:
+def _switch(force: bool) -> list[str]:
+    return ["switch", "--discard-changes"] if force else ["switch"]
+
+
+async def checkout_branch(root: Path, branch: str, force: bool = False) -> None:
     name = await validate_branch_name(root, branch)
     if await _ref_exists(root, f"refs/heads/{name}"):
-        await run_git(root, "switch", name)
+        await run_git(root, *_switch(force), name)
     elif await _ref_exists(root, f"refs/remotes/{name}"):
-        await run_git(root, "switch", "--track", name)
+        await run_git(root, *_switch(force), "--track", name)
     else:
         raise GitError(ErrorCode.INVALID_ARGUMENT, f"Unknown branch: {name}")
 
 
-async def create_branch(root: Path, name: str, start_point: str | None = None) -> None:
+async def create_branch(
+    root: Path, name: str, start_point: str | None = None, force: bool = False
+) -> None:
     valid_name = await validate_branch_name(root, name)
-    args = ["switch", "-c", valid_name]
+    args = [*_switch(force), "-c", valid_name]
     if start_point:
         args.append(await validate_start_point(root, start_point))
     await run_git(root, *args)

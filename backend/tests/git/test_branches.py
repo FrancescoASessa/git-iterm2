@@ -22,13 +22,43 @@ def current_branch(repo: Path) -> str:
 def test_parse_for_each_ref() -> None:
     output = "\n".join(
         [
-            "\x00".join(["refs/heads/main", "main", "*", "origin/main", "ahead 2, behind 1",
-                         "aaaa", "subject one", "100"]),
-            "\x00".join(["refs/heads/gone", "gone", " ", "origin/gone", "gone",
-                         "bbbb", "subject two", "200"]),
+            "\x00".join(
+                [
+                    "refs/heads/main",
+                    "main",
+                    "*",
+                    "origin/main",
+                    "ahead 2, behind 1",
+                    "aaaa",
+                    "subject one",
+                    "100",
+                ]
+            ),
+            "\x00".join(
+                [
+                    "refs/heads/gone",
+                    "gone",
+                    " ",
+                    "origin/gone",
+                    "gone",
+                    "bbbb",
+                    "subject two",
+                    "200",
+                ]
+            ),
             "\x00".join(["refs/remotes/origin/HEAD", "origin", " ", "", "", "aaaa", "s", "100"]),
-            "\x00".join(["refs/remotes/origin/main", "origin/main", " ", "", "",
-                         "cccc", "subject three", "300"]),
+            "\x00".join(
+                [
+                    "refs/remotes/origin/main",
+                    "origin/main",
+                    " ",
+                    "",
+                    "",
+                    "cccc",
+                    "subject three",
+                    "300",
+                ]
+            ),
         ]
     )
     branches = parse_for_each_ref(output)
@@ -134,3 +164,24 @@ async def test_invalid_names_are_rejected(repo: Path) -> None:
         with pytest.raises(GitError) as info:
             await call
         assert info.value.code is ErrorCode.INVALID_ARGUMENT
+
+
+async def test_forced_checkout_discards_conflicting_changes(repo: Path) -> None:
+    git(repo, "switch", "-q", "-c", "other")
+    commit_file(repo, "README.md", "other\n", "other")
+    git(repo, "switch", "-q", "main")
+    write(repo, "README.md", "local edit\n")
+    await checkout_branch(repo, "other", force=True)
+    assert current_branch(repo) == "other"
+    assert (repo / "README.md").read_text() == "other\n"
+    assert git(repo, "status", "--porcelain") == ""
+
+
+async def test_forced_create_discards_local_changes(repo: Path) -> None:
+    first = git(repo, "rev-parse", "HEAD").strip()
+    commit_file(repo, "README.md", "second\n", "second")
+    write(repo, "README.md", "local edit\n")
+    await create_branch(repo, "old", start_point=first, force=True)
+    assert current_branch(repo) == "old"
+    assert (repo / "README.md").read_text() == "hello\n"
+    assert git(repo, "status", "--porcelain") == ""

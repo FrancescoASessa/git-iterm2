@@ -888,11 +888,6 @@
               }
             ]
           },
-          "shell_integration": {
-            "default": true,
-            "title": "Shell Integration",
-            "type": "boolean"
-          },
           "type": {
             "const": "snapshot",
             "default": "snapshot",
@@ -902,8 +897,7 @@
         },
         "required": [
           "type",
-          "repo",
-          "shell_integration"
+          "repo"
         ],
         "title": "SnapshotMessage",
         "type": "object"
@@ -983,54 +977,44 @@
         "type": "object"
       },
       "Theme": {
-        "description": "Both appearance palettes, plus the profile's monospace font.\n\nBoth palettes always travel, because a macOS light/dark switch fires no\niTerm2 event: with a single palette the panel would keep the stale one\nuntil the next focus change. When the profile does not use separate\nlight and dark colours the two palettes are identical.",
         "properties": {
-          "dark": {
-            "$ref": "#/components/schemas/ThemePalette"
+          "ansi": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ansi",
+            "type": "array"
           },
-          "light": {
-            "$ref": "#/components/schemas/ThemePalette"
-          },
-          "mono_family": {
-            "title": "Mono Family",
+          "background": {
+            "title": "Background",
             "type": "string"
           },
-          "mono_size": {
-            "title": "Mono Size",
+          "font_family": {
+            "title": "Font Family",
+            "type": "string"
+          },
+          "font_size": {
+            "title": "Font Size",
             "type": "number"
+          },
+          "foreground": {
+            "title": "Foreground",
+            "type": "string"
+          },
+          "selection": {
+            "title": "Selection",
+            "type": "string"
           }
         },
         "required": [
-          "light",
-          "dark",
-          "mono_family",
-          "mono_size"
+          "background",
+          "foreground",
+          "selection",
+          "ansi",
+          "font_family",
+          "font_size"
         ],
         "title": "Theme",
-        "type": "object"
-      },
-      "ThemePalette": {
-        "description": "The profile colours the panel honours, for one system appearance.\n\nThe panel's own surfaces (backgrounds, separators, secondary text) are\nneutral and resolved in CSS from the system appearance, so the profile\ncontributes only the colours that carry meaning: the user's diff green\nand red, and the accent used for branch and ref labels.",
-        "properties": {
-          "accent": {
-            "title": "Accent",
-            "type": "string"
-          },
-          "added": {
-            "title": "Added",
-            "type": "string"
-          },
-          "removed": {
-            "title": "Removed",
-            "type": "string"
-          }
-        },
-        "required": [
-          "accent",
-          "added",
-          "removed"
-        ],
-        "title": "ThemePalette",
         "type": "object"
       },
       "Upstream": {

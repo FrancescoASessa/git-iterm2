@@ -5,21 +5,24 @@ from git_iterm2.git.status import parse_porcelain_v2, read_snapshot
 from git_iterm2.models import FileChange
 from tests.helpers import commit_file, git, make_conflict, write
 
-SAMPLE = "\0".join(
-    [
-        "# branch.oid 1111111111111111111111111111111111111111",
-        "# branch.head main",
-        "# branch.upstream origin/main",
-        "# branch.ab +2 -1",
-        "1 M. N... 100644 100644 100644 aaaa bbbb staged.txt",
-        "1 .M N... 100644 100644 100644 aaaa aaaa unstaged.txt",
-        "1 MM N... 100644 100644 100644 aaaa bbbb both.txt",
-        "2 R. N... 100644 100644 100644 aaaa aaaa R100 new name.txt",
-        "old name.txt",
-        "u UU N... 100644 100644 100644 100644 aaaa bbbb cccc conflict.txt",
-        "? untracked dir/file.txt",
-    ]
-) + "\0"
+SAMPLE = (
+    "\0".join(
+        [
+            "# branch.oid 1111111111111111111111111111111111111111",
+            "# branch.head main",
+            "# branch.upstream origin/main",
+            "# branch.ab +2 -1",
+            "1 M. N... 100644 100644 100644 aaaa bbbb staged.txt",
+            "1 .M N... 100644 100644 100644 aaaa aaaa unstaged.txt",
+            "1 MM N... 100644 100644 100644 aaaa bbbb both.txt",
+            "2 R. N... 100644 100644 100644 aaaa aaaa R100 new name.txt",
+            "old name.txt",
+            "u UU N... 100644 100644 100644 100644 aaaa bbbb cccc conflict.txt",
+            "? untracked dir/file.txt",
+        ]
+    )
+    + "\0"
+)
 
 
 def test_parse_porcelain_v2() -> None:

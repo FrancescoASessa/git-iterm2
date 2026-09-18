@@ -45,7 +45,9 @@ class Recorder:
         self._event.set()
 
     async def wait_for(
-        self, predicate: Callable[[Any], bool], timeout: float = 5.0  # noqa: ASYNC109
+        self,
+        predicate: Callable[[Any], bool],
+        timeout: float = 5.0,  # noqa: ASYNC109
     ) -> Any:
         async def loop() -> Any:
             while True:

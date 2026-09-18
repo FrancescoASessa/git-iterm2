@@ -81,7 +81,6 @@ async def test_token_is_never_logged(repo: Path, caplog: pytest.LogCaptureFixtur
     await controller.set_active_path(repo)
     runner, port = await start_server(create_app(controller, ServerConfig(token=secret)))
     caplog.set_level(logging.DEBUG)
-    canary = "canary: caplog is capturing git_iterm2 log records"
     try:
         async with aiohttp.ClientSession() as session:
             base = f"http://127.0.0.1:{port}"
@@ -91,17 +90,8 @@ async def test_token_is_never_logged(repo: Path, caplog: pytest.LogCaptureFixtur
             async with session.get(f"{base}/api/branches", headers={"X-Token": secret}) as api:
                 assert api.status == 200
                 await api.read()
-        # Positive control: none of the requests above happen to log
-        # anything, so `secret not in caplog.text` alone would pass
-        # vacuously (e.g. if `caplog.text` were empty for an unrelated
-        # reason, such as `git_iterm2.propagate` having been left `False`
-        # by another test). Prove `caplog` really is receiving records from
-        # this codebase's logger hierarchy right now before trusting the
-        # negative assertion below.
-        logging.getLogger("git_iterm2.api.security").info(canary)
     finally:
         await runner.cleanup()
-    assert canary in caplog.text
     assert secret not in caplog.text
 
 

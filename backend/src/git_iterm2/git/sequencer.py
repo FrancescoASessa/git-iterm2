@@ -8,9 +8,7 @@ _COMMANDS = {"merging": "merge", "rebasing": "rebase", "cherry-picking": "cherry
 def _command(paths: RepoPaths) -> str:
     command = _COMMANDS.get(detect_state(paths.git_dir))
     if command is None:
-        raise GitError(
-            ErrorCode.INVALID_ARGUMENT, "No merge, rebase or cherry-pick is in progress"
-        )
+        raise GitError(ErrorCode.INVALID_ARGUMENT, "No merge, rebase or cherry-pick is in progress")
     return command
 
 

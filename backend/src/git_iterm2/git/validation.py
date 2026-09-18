@@ -36,7 +36,12 @@ async def validate_start_point(cwd: Path, rev: str) -> str:
     if not rev or rev.startswith("-"):
         raise GitError(ErrorCode.INVALID_ARGUMENT, f"Invalid start point: {rev!r}")
     result = await run_git(
-        cwd, "rev-parse", "--verify", "--quiet", "--end-of-options", f"{rev}^{{commit}}",
+        cwd,
+        "rev-parse",
+        "--verify",
+        "--quiet",
+        "--end-of-options",
+        f"{rev}^{{commit}}",
         check=False,
     )
     if result.returncode != 0:

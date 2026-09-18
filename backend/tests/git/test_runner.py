@@ -1,9 +1,11 @@
+import asyncio
+import os
 from pathlib import Path
 
 import pytest
 
 from git_iterm2.errors import ErrorCode, GitError
-from git_iterm2.git.runner import git_env, run_git, stream_git
+from git_iterm2.git.runner import BASE_ARGS, GitResult, _failure, git_env, run_git, stream_git
 
 
 async def test_run_git_returns_stdout(repo: Path) -> None:
@@ -69,3 +71,77 @@ async def test_stream_git_raises_on_failure(tmp_path: Path) -> None:
         await stream_git(
             tmp_path, "clone", str(tmp_path / "missing"), str(tmp_path / "x"), on_line=on_line
         )
+
+
+async def _wait_until_gone(pid: int, timeout: float = 2.0) -> bool:  # noqa: ASYNC109
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    while loop.time() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        await asyncio.sleep(0.02)
+    return False
+
+
+async def _read_pid(pid_file: Path) -> int:
+    for _ in range(500):
+        if pid_file.exists() and pid_file.read_text().strip():
+            return int(pid_file.read_text())
+        await asyncio.sleep(0.01)
+    raise AssertionError("silent command did not start")
+
+
+@pytest.fixture
+def silent_command(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Define `git slow`: records its pid, then sleeps without any output."""
+    pid_file = tmp_path / "pid"
+    alias = f"alias.slow=!echo $$ > '{pid_file}'; exec sleep 30"
+    monkeypatch.setattr("git_iterm2.git.runner.BASE_ARGS", (*BASE_ARGS, "-c", alias))
+    return pid_file
+
+
+async def test_stream_git_idle_timeout_kills_process_group(
+    tmp_path: Path, silent_command: Path
+) -> None:
+    async def on_line(line: str) -> None:
+        return None
+
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    with pytest.raises(GitError) as info:
+        await stream_git(tmp_path, "slow", on_line=on_line, idle_timeout=0.3)
+    assert loop.time() - started < 2
+    assert info.value.code is ErrorCode.GIT_FAILED
+    assert info.value.message == "git slow timed out with no output"
+    assert await _wait_until_gone(await _read_pid(silent_command))
+
+
+async def test_stream_git_cancel_kills_process_group(tmp_path: Path, silent_command: Path) -> None:
+    async def on_line(line: str) -> None:
+        return None
+
+    task = asyncio.create_task(stream_git(tmp_path, "slow", on_line=on_line))
+    pid = await _read_pid(silent_command)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert await _wait_until_gone(pid)
+
+
+@pytest.mark.parametrize(
+    ("stderr", "stdout", "expected"),
+    [
+        ("To /r.git\n ! [rejected] main\nerror: failed to push\nhint: pull", "", "failed to push"),
+        ("warning: x\nfatal: bad thing\nerror: later", "", "bad thing"),
+        ("\n  first line\nsecond", "out", "first line"),
+        ("", "\nNothing to commit\n", "Nothing to commit"),
+        ("", "", "git push failed"),
+    ],
+)
+def test_failure_message_prefers_fatal_and_error_lines(
+    stderr: str, stdout: str, expected: str
+) -> None:
+    error = _failure(("push",), GitResult(stdout, stderr, 1))
+    assert error.message == expected

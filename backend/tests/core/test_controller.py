@@ -9,7 +9,7 @@ from git_iterm2.core.fingerprint import Fingerprint, repo_fingerprint
 from git_iterm2.errors import ErrorCode, GitError
 from git_iterm2.git.changes import stage
 from git_iterm2.git.repo import RepoPaths
-from git_iterm2.models import OpDoneMessage, SnapshotMessage, Theme, ThemePalette
+from git_iterm2.models import OpDoneMessage, SnapshotMessage, Theme
 from tests.helpers import Recorder, commit_file, write
 
 
@@ -92,45 +92,17 @@ async def test_action_without_repo_raises() -> None:
 async def test_set_theme_is_included_in_snapshot(repo: Path) -> None:
     controller = RepoController()
     await controller.set_active_path(repo)
-    palette = ThemePalette(accent="#0a69da", added="#1a7f37", removed="#cf222e")
-    theme = Theme(light=palette, dark=palette, mono_family="Menlo", mono_size=12.0)
+    theme = Theme(
+        background="#000000",
+        foreground="#ffffff",
+        selection="#333333",
+        ansi=["#000000"] * 16,
+        font_family="Menlo",
+        font_size=12.0,
+    )
     await controller.set_theme(theme)
     assert controller.snapshot is not None
     assert controller.snapshot.theme == theme
-
-
-async def test_shell_integration_flag_rides_on_the_snapshot_envelope() -> None:
-    """The flag must travel on the `SnapshotMessage` envelope, not inside
-    `RepoSnapshot`.
-
-    The only state production ever puts the controller in when the flag is
-    false is *no active path at all*: `panel.py`'s `on_path` calls
-    `set_active_path(None)` and `set_shell_integration(False)` together,
-    because a session with no readable `path` variable has no directory to
-    resolve a repository from. `refresh()` then has no snapshot to put the
-    flag inside, so a flag that only existed inside `RepoSnapshot` could
-    never be delivered at all.
-    """
-    controller = RepoController()
-    recorder = Recorder()
-    controller.subscribe(recorder)
-
-    await controller.set_shell_integration(False)
-
-    message = await recorder.wait_for(is_snapshot)
-    assert message.repo is None  # exactly the state production reaches
-    assert message.shell_integration is False
-    assert controller.shell_integration is False
-
-    # And back again: the no-op guard in `set_shell_integration` compares
-    # against the *current* value, not just the initial default, so it must
-    # not silently pin the flag once it has gone false.
-    recorder.messages.clear()
-    await controller.set_shell_integration(True)
-
-    message = await recorder.wait_for(is_snapshot)
-    assert message.shell_integration is True
-    assert controller.shell_integration is True
 
 
 async def test_remote_op_success(remote_pair: tuple[Path, Path]) -> None:

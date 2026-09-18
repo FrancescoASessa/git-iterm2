@@ -46,8 +46,7 @@ def test_parse_hunk_without_counts() -> None:
 
 def test_parse_binary_diff() -> None:
     text = (
-        "diff --git a/i.png b/i.png\nindex 1..2 100644\n"
-        "Binary files a/i.png and b/i.png differ\n"
+        "diff --git a/i.png b/i.png\nindex 1..2 100644\nBinary files a/i.png and b/i.png differ\n"
     )
     diff = parse_unified_diff("i.png", text)
     assert diff.binary is True

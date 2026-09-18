@@ -8,6 +8,7 @@ from git_iterm2.git.runner import run_git, stream_git
 
 RemoteOp = Literal["fetch", "pull", "push"]
 REMOTE_OPS: tuple[RemoteOp, ...] = ("fetch", "pull", "push")
+REMOTE_IDLE_TIMEOUT = 300.0
 ProgressHandler = Callable[[str, int | None, str], Awaitable[None]]
 
 _PROGRESS = re.compile(r"^(?:remote: )?([A-Za-z][A-Za-z ]*?):\s+(\d+)%")
@@ -53,4 +54,4 @@ async def run_remote_op(root: Path, op: RemoteOp, on_progress: ProgressHandler) 
         phase, pct = parse_progress(line)
         await on_progress(phase, pct, line)
 
-    await stream_git(root, *args, on_line=handle)
+    await stream_git(root, *args, on_line=handle, idle_timeout=REMOTE_IDLE_TIMEOUT)

@@ -90,12 +90,20 @@ async def get_worktree_diff(root: Path, path: str, staged: bool) -> Diff:
         untracked = await run_git(root, "ls-files", "--others", "--exclude-standard", "--", rel)
         if untracked.stdout.strip():
             result = await run_git(
-                root, "diff", "--no-index", "--no-ext-diff", "--", "/dev/null", rel, check=False
+                root,
+                "diff",
+                "--no-index",
+                "--no-color",
+                "--no-ext-diff",
+                "--",
+                "/dev/null",
+                rel,
+                check=False,
             )
             if result.returncode not in (0, 1):
                 raise GitError(ErrorCode.GIT_FAILED, "git diff failed", result.stderr)
             return parse_unified_diff(rel, result.stdout)
-    args = ["diff", "--no-ext-diff", "-M"]
+    args = ["diff", "--no-color", "--no-ext-diff", "-M"]
     if staged:
         args.append("--cached")
     result = await run_git(root, *args, "--", rel)
@@ -107,5 +115,5 @@ async def get_commit_diff(root: Path, sha: str, path: str) -> Diff:
     (rel,) = validate_repo_paths([path])
     parents = await commit_parents(root, rev)
     base = parents[0] if parents else await empty_tree(root)
-    result = await run_git(root, "diff", "--no-ext-diff", "-M", base, rev, "--", rel)
+    result = await run_git(root, "diff", "--no-color", "--no-ext-diff", "-M", base, rev, "--", rel)
     return parse_unified_diff(rel, result.stdout)

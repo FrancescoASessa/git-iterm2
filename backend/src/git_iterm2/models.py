@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from git_iterm2.errors import ErrorCode, GitError
 
@@ -8,24 +8,28 @@ FileStatus = Literal["M", "A", "D", "R", "C", "T", "U"]
 RepoState = Literal["clean", "merging", "rebasing", "cherry-picking"]
 
 
-class FileChange(BaseModel):
+class ApiModel(BaseModel):
+    model_config = ConfigDict(json_schema_serialization_defaults_required=True)
+
+
+class FileChange(ApiModel):
     path: str
     orig_path: str | None = None
     status: FileStatus
 
 
-class Head(BaseModel):
+class Head(ApiModel):
     branch: str | None
     detached_sha: str | None
 
 
-class Upstream(BaseModel):
+class Upstream(ApiModel):
     name: str
     ahead: int
     behind: int
 
 
-class Theme(BaseModel):
+class Theme(ApiModel):
     background: str
     foreground: str
     selection: str
@@ -34,7 +38,7 @@ class Theme(BaseModel):
     font_size: float
 
 
-class RepoSnapshot(BaseModel):
+class RepoSnapshot(ApiModel):
     root: str
     head: Head
     upstream: Upstream | None
@@ -47,14 +51,14 @@ class RepoSnapshot(BaseModel):
     theme: Theme | None = None
 
 
-class DiffLine(BaseModel):
+class DiffLine(ApiModel):
     kind: Literal["context", "add", "del"]
     text: str
     old_no: int | None
     new_no: int | None
 
 
-class DiffHunk(BaseModel):
+class DiffHunk(ApiModel):
     header: str
     old_start: int
     old_lines: int
@@ -63,14 +67,14 @@ class DiffHunk(BaseModel):
     lines: list[DiffLine]
 
 
-class Diff(BaseModel):
+class Diff(ApiModel):
     path: str
     binary: bool
     truncated: bool
     hunks: list[DiffHunk]
 
 
-class BranchInfo(BaseModel):
+class BranchInfo(ApiModel):
     name: str
     full_ref: str
     is_remote: bool
@@ -83,18 +87,18 @@ class BranchInfo(BaseModel):
     last_commit_ts: int
 
 
-class Branches(BaseModel):
+class Branches(ApiModel):
     local: list[BranchInfo]
     remote: list[BranchInfo]
 
 
-class GraphEdge(BaseModel):
+class GraphEdge(ApiModel):
     from_lane: int
     to_lane: int
     half: Literal["top", "bottom"]
 
 
-class GraphCommit(BaseModel):
+class GraphCommit(ApiModel):
     sha: str
     parents: list[str]
     author: str
@@ -105,18 +109,18 @@ class GraphCommit(BaseModel):
     edges: list[GraphEdge]
 
 
-class GraphPage(BaseModel):
+class GraphPage(ApiModel):
     commits: list[GraphCommit]
     next_cursor: str | None
 
 
-class CommitFile(BaseModel):
+class CommitFile(ApiModel):
     path: str
     orig_path: str | None
     status: FileStatus
 
 
-class CommitDetail(BaseModel):
+class CommitDetail(ApiModel):
     sha: str
     parents: list[str]
     author: str
@@ -127,18 +131,18 @@ class CommitDetail(BaseModel):
     files: list[CommitFile]
 
 
-class StashEntry(BaseModel):
+class StashEntry(ApiModel):
     index: int
     message: str
     sha: str
     timestamp: int
 
 
-class StashList(BaseModel):
+class StashList(ApiModel):
     entries: list[StashEntry]
 
 
-class ErrorBody(BaseModel):
+class ErrorBody(ApiModel):
     code: ErrorCode
     message: str
     stderr: str = ""
@@ -148,65 +152,66 @@ class ErrorBody(BaseModel):
         return cls(code=error.code, message=error.message, stderr=error.stderr)
 
 
-class PathsBody(BaseModel):
+class PathsBody(ApiModel):
     paths: list[str] = Field(min_length=1)
 
 
-class CommitBody(BaseModel):
+class CommitBody(ApiModel):
     message: str = ""
     amend: bool = False
 
 
-class CheckoutBody(BaseModel):
+class CheckoutBody(ApiModel):
     branch: str | None = None
     create: str | None = None
     start_point: str | None = None
+    force: bool = False
 
 
-class RenameBranchBody(BaseModel):
+class RenameBranchBody(ApiModel):
     old_name: str
     new_name: str
 
 
-class DeleteBranchBody(BaseModel):
+class DeleteBranchBody(ApiModel):
     name: str
     force: bool = False
 
 
-class UpstreamBody(BaseModel):
+class UpstreamBody(ApiModel):
     name: str
     upstream: str
 
 
-class StashPushBody(BaseModel):
+class StashPushBody(ApiModel):
     message: str = ""
     include_untracked: bool = False
 
 
-class StashIndexBody(BaseModel):
+class StashIndexBody(ApiModel):
     index: int = Field(ge=0)
 
 
-class DiffSplitBody(BaseModel):
+class DiffSplitBody(ApiModel):
     path: str
     staged: bool = False
 
 
-class OpStarted(BaseModel):
+class OpStarted(ApiModel):
     op_id: str
 
 
-class AuthMessage(BaseModel):
-    type: Literal["auth"] = "auth"
+class AuthMessage(ApiModel):
+    type: Literal["auth"]
     token: str
 
 
-class SnapshotMessage(BaseModel):
+class SnapshotMessage(ApiModel):
     type: Literal["snapshot"] = "snapshot"
     repo: RepoSnapshot | None
 
 
-class OpProgressMessage(BaseModel):
+class OpProgressMessage(ApiModel):
     type: Literal["op_progress"] = "op_progress"
     op_id: str
     phase: str
@@ -214,7 +219,7 @@ class OpProgressMessage(BaseModel):
     line: str
 
 
-class OpDoneMessage(BaseModel):
+class OpDoneMessage(ApiModel):
     type: Literal["op_done"] = "op_done"
     op_id: str
     ok: bool

@@ -1,3 +1,5 @@
+import base64
+import json
 from pathlib import Path
 
 import pytest
@@ -10,6 +12,7 @@ from git_iterm2.git.graph import (
     encode_cursor,
     parse_log,
     read_graph,
+    tips_fingerprint,
 )
 from git_iterm2.models import GraphCommit
 from tests.helpers import commit_file, git
@@ -33,9 +36,7 @@ def test_linear_history() -> None:
 
 
 def test_merge_history() -> None:
-    commits, lanes = assign_lanes(
-        [raw("M", "B", "F"), raw("B", "A"), raw("F", "A"), raw("A")], []
-    )
+    commits, lanes = assign_lanes([raw("M", "B", "F"), raw("B", "A"), raw("F", "A"), raw("A")], [])
     assert [c.lane for c in commits] == [0, 0, 1, 0]
     assert edges(commits[0]) == [(0, 0, "bottom"), (0, 1, "bottom")]
     assert edges(commits[1]) == [(0, 0, "top"), (1, 1, "top"), (0, 0, "bottom"), (1, 1, "bottom")]
@@ -61,12 +62,25 @@ def test_lanes_continue_across_pages() -> None:
 
 
 def test_cursor_round_trip() -> None:
-    cursor = encode_cursor(200, ["abc", None, "def"])
-    assert decode_cursor(cursor) == (200, ["abc", None, "def"])
-    assert decode_cursor(None) == (0, [])
+    cursor = encode_cursor(200, ["abc", None, "def"], "0123456789abcdef")
+    assert decode_cursor(cursor) == (200, ["abc", None, "def"], "0123456789abcdef")
+    assert decode_cursor(None) == (0, [], None)
 
 
-@pytest.mark.parametrize("bad", ["not-base64!", "e30", "eyJza2lwIjogLTF9"])
+def _cursor(data: object) -> str:
+    return base64.urlsafe_b64encode(json.dumps(data).encode()).decode()
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "not-base64!",
+        "e30",
+        "eyJza2lwIjogLTF9",
+        _cursor({"skip": 0, "lanes": []}),
+        _cursor({"skip": 0, "lanes": [], "tips": 5}),
+    ],
+)
 def test_invalid_cursor(bad: str) -> None:
     with pytest.raises(GitError) as info:
         decode_cursor(bad)
@@ -129,3 +143,27 @@ async def test_read_graph_rejects_bad_limit(repo: Path) -> None:
     with pytest.raises(GitError) as info:
         await read_graph(repo, limit=0)
     assert info.value.code is ErrorCode.INVALID_ARGUMENT
+
+
+async def test_read_graph_rejects_cursor_after_history_changes(repo: Path) -> None:
+    for index in range(4):
+        commit_file(repo, f"f{index}.txt", "x\n", f"commit {index}")
+    first = await read_graph(repo, limit=2)
+    assert first.next_cursor is not None
+    commit_file(repo, "late.txt", "x\n", "late commit")
+    with pytest.raises(GitError) as info:
+        await read_graph(repo, cursor=first.next_cursor, limit=2)
+    assert info.value.code is ErrorCode.STALE_CURSOR
+    assert info.value.message == "Graph changed; reload from the top"
+
+
+async def test_tips_fingerprint_tracks_refs_and_head(repo: Path) -> None:
+    before = await tips_fingerprint(repo)
+    assert len(before) == 16
+    assert await tips_fingerprint(repo) == before
+    git(repo, "branch", "side")
+    after_branch = await tips_fingerprint(repo)
+    assert after_branch != before
+    git(repo, "switch", "-q", "--detach", "HEAD")
+    commit_file(repo, "d.txt", "d\n", "detached work")
+    assert await tips_fingerprint(repo) != after_branch

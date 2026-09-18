@@ -3,7 +3,12 @@ from pathlib import Path
 import pytest
 
 from git_iterm2.errors import ErrorCode, GitError
-from git_iterm2.git.remote import parse_progress, remote_args, run_remote_op
+from git_iterm2.git.remote import (
+    REMOTE_IDLE_TIMEOUT,
+    parse_progress,
+    remote_args,
+    run_remote_op,
+)
 from tests.helpers import commit_file, git
 
 
@@ -34,7 +39,11 @@ async def test_push_new_branch_sets_upstream(remote_pair: tuple[Path, Path]) -> 
     repo, bare = remote_pair
     git(repo, "switch", "-q", "-c", "feature")
     assert await remote_args(repo, "push") == [
-        "push", "--progress", "--set-upstream", "origin", "feature",
+        "push",
+        "--progress",
+        "--set-upstream",
+        "origin",
+        "feature",
     ]
     await run_remote_op(repo, "push", ignore)
     assert git(repo, "rev-parse", "--abbrev-ref", "@{upstream}").strip() == "origin/feature"
@@ -53,6 +62,8 @@ async def test_push_rejected_is_non_fast_forward(
     with pytest.raises(GitError) as info:
         await run_remote_op(repo, "push", ignore)
     assert info.value.code is ErrorCode.NON_FAST_FORWARD
+    assert not info.value.message.startswith("To ")
+    assert info.value.message.startswith("failed to push some refs")
 
 
 async def test_fetch_and_pull(tmp_path: Path, remote_pair: tuple[Path, Path]) -> None:
@@ -77,3 +88,16 @@ async def test_push_without_remote_fails(repo: Path) -> None:
     with pytest.raises(GitError) as info:
         await run_remote_op(repo, "push", ignore)
     assert info.value.code is ErrorCode.INVALID_ARGUMENT
+
+
+async def test_remote_ops_use_idle_timeout(
+    remote_pair: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: dict[str, object] = {}
+
+    async def fake_stream_git(root: Path, *args: str, on_line: object, **kwargs: object) -> None:
+        seen.update(kwargs)
+
+    monkeypatch.setattr("git_iterm2.git.remote.stream_git", fake_stream_git)
+    await run_remote_op(remote_pair[0], "fetch", ignore)
+    assert seen["idle_timeout"] == REMOTE_IDLE_TIMEOUT == 300.0

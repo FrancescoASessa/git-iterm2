@@ -11,9 +11,7 @@ _STASH_REF = re.compile(r"stash@\{(\d+)\}")
 
 
 async def list_stashes(root: Path) -> list[StashEntry]:
-    result = await run_git(
-        root, "stash", "list", "--format=%gd%x00%H%x00%ct%x00%gs", check=False
-    )
+    result = await run_git(root, "stash", "list", "--format=%gd%x00%H%x00%ct%x00%gs", check=False)
     if result.returncode != 0:
         return []
     entries: list[StashEntry] = []

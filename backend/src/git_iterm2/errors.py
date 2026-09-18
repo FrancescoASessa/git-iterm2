@@ -15,6 +15,7 @@ class ErrorCode(StrEnum):
     GIT_FAILED = "GIT_FAILED"
     UNAUTHORIZED = "UNAUTHORIZED"
     FORBIDDEN = "FORBIDDEN"
+    STALE_CURSOR = "STALE_CURSOR"
 
 
 class GitError(Exception):
@@ -31,7 +32,7 @@ _RULES: list[tuple[re.Pattern[str], ErrorCode]] = [
     (
         re.compile(
             r"Authentication failed|could not read Username|terminal prompts disabled"
-            r"|Permission denied \(publickey",
+            r"|Permission denied \(publickey|Host key verification failed",
             re.IGNORECASE,
         ),
         ErrorCode.AUTH_REQUIRED,

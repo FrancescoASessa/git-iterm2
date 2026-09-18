@@ -1,5 +1,6 @@
 import base64
 import binascii
+import hashlib
 import json
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -133,21 +134,43 @@ def assign_lanes(
     return result, active
 
 
-def encode_cursor(skip: int, lanes: Sequence[str | None]) -> str:
-    payload = json.dumps({"skip": skip, "lanes": list(lanes)}).encode()
+async def tips_fingerprint(root: Path) -> str:
+    """Identify the set of history tips the graph is drawn from.
+
+    Covers the same refs `read_graph` walks (branches, remotes, tags) plus HEAD, so that
+    unrelated refs such as the stash do not invalidate pagination cursors.
+    """
+    refs = await run_git(
+        root,
+        "for-each-ref",
+        "--format=%(objectname) %(refname)",
+        "refs/heads",
+        "refs/remotes",
+        "refs/tags",
+    )
+    head = await run_git(root, "rev-parse", "--verify", "--quiet", "HEAD", check=False)
+    head_sha = head.stdout.strip() if head.returncode == 0 else ""
+    digest = hashlib.sha256(f"{refs.stdout}\0{head_sha}".encode())
+    return digest.hexdigest()[:16]
+
+
+def encode_cursor(skip: int, lanes: Sequence[str | None], tips: str) -> str:
+    payload = json.dumps({"skip": skip, "lanes": list(lanes), "tips": tips}).encode()
     return base64.urlsafe_b64encode(payload).decode()
 
 
-def decode_cursor(cursor: str | None) -> tuple[int, list[str | None]]:
+def decode_cursor(cursor: str | None) -> tuple[int, list[str | None], str | None]:
     if not cursor:
-        return 0, []
+        return 0, [], None
     try:
         padded = cursor + "=" * (-len(cursor) % 4)
         data: Any = json.loads(base64.urlsafe_b64decode(padded.encode()))
         skip = data["skip"]
         lanes = data["lanes"]
+        tips = data["tips"]
         valid = (
-            isinstance(skip, int)
+            isinstance(tips, str)
+            and isinstance(skip, int)
             and skip >= 0
             and isinstance(lanes, list)
             and all(item is None or isinstance(item, str) for item in lanes)
@@ -156,13 +179,16 @@ def decode_cursor(cursor: str | None) -> tuple[int, list[str | None]]:
         raise GitError(ErrorCode.INVALID_ARGUMENT, "Invalid graph cursor") from error
     if not valid:
         raise GitError(ErrorCode.INVALID_ARGUMENT, "Invalid graph cursor")
-    return skip, lanes
+    return skip, lanes, tips
 
 
 async def read_graph(root: Path, cursor: str | None = None, limit: int = 200) -> GraphPage:
     if not 1 <= limit <= MAX_LIMIT:
         raise GitError(ErrorCode.INVALID_ARGUMENT, f"limit must be between 1 and {MAX_LIMIT}")
-    skip, lanes = decode_cursor(cursor)
+    skip, lanes, cursor_tips = decode_cursor(cursor)
+    tips = await tips_fingerprint(root)
+    if cursor_tips is not None and cursor_tips != tips:
+        raise GitError(ErrorCode.STALE_CURSOR, "Graph changed; reload from the top")
 
     revisions = ["--branches", "--remotes", "--tags"]
     if await has_head(root):
@@ -175,6 +201,8 @@ async def read_graph(root: Path, cursor: str | None = None, limit: int = 200) ->
     result = await run_git(
         root,
         "log",
+        "--no-show-signature",
+        "--no-color",
         "--topo-order",
         f"--skip={skip}",
         f"--max-count={limit}",
@@ -185,7 +213,7 @@ async def read_graph(root: Path, cursor: str | None = None, limit: int = 200) ->
     raw_commits = parse_log(result.stdout)
     commits, lanes_after = assign_lanes(raw_commits, lanes)
     next_cursor = (
-        encode_cursor(skip + len(raw_commits), lanes_after)
+        encode_cursor(skip + len(raw_commits), lanes_after, tips)
         if len(raw_commits) == limit
         else None
     )
