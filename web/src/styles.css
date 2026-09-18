@@ -1,0 +1,901 @@
+/* ---------------------------------------------------------------------------
+   Design tokens
+   ---------------------------------------------------------------------------
+   The panel's surfaces are its own: neutral greys resolved from the *system*
+   appearance, not from the iTerm2 profile. The web view is a WKWebView and
+   already follows the system appearance, so light/dark is settled here by
+   `prefers-color-scheme` and nothing in Python or TypeScript has to detect it
+   (an appearance switch fires no iTerm2 event, so a panel that waited for one
+   would stay wrong until the next focus change).
+
+   The profile contributes only the colours that carry meaning, written by
+   `theme.ts` as `--accent-light` / `--accent-dark` (and the same pairing for
+   added/removed) plus `--font-mono` and `--mono-size`. The `--accent`,
+   `--add` and `--del` aliases below are what components use.
+   --------------------------------------------------------------------------- */
+
+:root {
+  color-scheme: light dark;
+
+  /* Profile-derived, per appearance. `applyTheme()` overwrites these on the
+     root element; the values here are the same fallbacks the backend uses. */
+  --accent-light: #0a69da;
+  --added-light: #1a7f37;
+  --removed-light: #cf222e;
+  --accent-dark: #4493f8;
+  --added-dark: #3fb950;
+  --removed-dark: #f85149;
+
+  --accent: var(--accent-light);
+  --add: var(--added-light);
+  --del: var(--removed-light);
+
+  /* Typography. System stack for all UI text; the profile's monospace font is
+     reserved for content that is literally terminal/repository text: paths,
+     diff bodies, commit hashes, branch names. */
+  --font-ui:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --text-size: 13px;
+  --text-size-sm: 11px;
+  --mono-size: 12px;
+
+  /* Density */
+  --row-height: 26px;
+  --gutter: 8px;
+  --radius: 5px;
+  --radius-sm: 4px;
+
+  /* Neutral surfaces — light appearance */
+  --surface: #ffffff;
+  --surface-sunken: #f1f1f4;
+  --surface-raised: #ffffff;
+  --hover: rgb(0 0 0 / 5%);
+  --separator: rgb(0 0 0 / 10%);
+  --control-border: rgb(0 0 0 / 14%);
+  --text: #1d1d1f;
+  --text-secondary: #6b6b70;
+  --text-tertiary: #8e8e93;
+  --warning: #9a6700;
+  --warning-surface: #fff8e5;
+  --thumb-shadow: 0 0 0 0.5px rgb(0 0 0 / 6%), 0 1px 2px rgb(0 0 0 / 12%);
+  --overlay: rgb(0 0 0 / 22%);
+
+  /* Graph lanes: decoration, not meaning, so they are ours rather than the
+     profile's ANSI colours (which had no contrast guarantee on our surface). */
+  --lane-0: #0a69da;
+  --lane-1: #8250df;
+  --lane-2: #1a7f37;
+  --lane-3: #bc4c00;
+  --lane-4: #bf3989;
+  --lane-5: #1b7c83;
+
+  --focus-ring: color-mix(in srgb, var(--accent) 65%, transparent);
+  --selected-surface: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: var(--accent-dark);
+    --add: var(--added-dark);
+    --del: var(--removed-dark);
+
+    --surface: #1e1e20;
+    --surface-sunken: #141416;
+    --surface-raised: #2a2a2d;
+    --hover: rgb(255 255 255 / 7%);
+    --separator: rgb(255 255 255 / 12%);
+    --control-border: rgb(255 255 255 / 16%);
+    --text: #f2f2f7;
+    --text-secondary: #9c9ca3;
+    --text-tertiary: #7c7c83;
+    --warning: #d29922;
+    --warning-surface: #2b2411;
+    --thumb-shadow: 0 0 0 0.5px rgb(0 0 0 / 40%), 0 1px 2px rgb(0 0 0 / 30%);
+    --overlay: rgb(0 0 0 / 45%);
+
+    --lane-0: #4493f8;
+    --lane-1: #b083f0;
+    --lane-2: #3fb950;
+    --lane-3: #f0883e;
+    --lane-4: #f778ba;
+    --lane-5: #39c5cf;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--text-size);
+  line-height: 1.4;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* --- Monospace: only where it is semantic ------------------------------- */
+
+.mono,
+.branch,
+.sha,
+.path,
+.diff-line,
+.commit-body,
+.stash-ref {
+  font-family: var(--font-mono);
+  font-size: var(--mono-size);
+  font-variant-ligatures: none;
+}
+
+/* --- Controls ----------------------------------------------------------- */
+
+button {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* A row clips its overflow, so an outward ring would be cut off: draw the
+   ring inside the control instead. */
+.row :focus-visible,
+.graph-row:focus-visible,
+.tabs button:focus-visible {
+  outline-offset: -2px;
+}
+
+/* A bordered, native-looking push button. */
+.btn {
+  height: 20px;
+  padding: 0 8px;
+  font-size: var(--text-size-sm);
+  background: var(--surface-raised);
+  border: 1px solid var(--control-border);
+  box-shadow: var(--thumb-shadow);
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 590;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 85%, black);
+}
+
+/* Fetch / Pull / Push: one compact control rather than three loose buttons. */
+.btn-group {
+  display: flex;
+  flex: none;
+}
+
+.btn-group .btn {
+  border-radius: 0;
+  margin-left: -1px;
+  box-shadow: none;
+}
+
+.btn-group .btn:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  margin-left: 0;
+}
+
+.btn-group .btn:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+/* Bare glyph buttons inside a row (stage, unstage, discard, dismiss). */
+.icon-btn {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  text-align: center;
+  color: var(--text-secondary);
+  line-height: 18px;
+}
+
+.icon-btn:hover:not(:disabled) {
+  color: var(--text);
+}
+
+button.danger,
+.danger {
+  color: var(--del);
+}
+
+/* A row full of red glyphs reads as an error state. Destructive icon buttons
+   stay secondary until the pointer or the keyboard is actually on them. */
+.icon-btn.danger {
+  color: var(--text-tertiary);
+}
+
+.icon-btn.danger:hover:not(:disabled),
+.icon-btn.danger:focus-visible {
+  color: var(--del);
+}
+
+input,
+textarea {
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-family: var(--font-ui);
+  font-size: var(--text-size);
+  width: 100%;
+  min-width: 0;
+  padding: 2px 6px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+input[type='checkbox'] {
+  width: auto;
+  accent-color: var(--accent);
+  margin: 0 4px 0 0;
+}
+
+/* --- Shell -------------------------------------------------------------- */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--surface);
+}
+
+.panel {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* --- Rows --------------------------------------------------------------- */
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--row-height);
+  padding: 0 var(--gutter);
+  white-space: nowrap;
+}
+
+.row .grow {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Borderless list rows with a hover state, the way a Mac sidebar reads. */
+.file-row,
+.branch-row,
+.stash-row,
+.graph-row {
+  border-radius: var(--radius-sm);
+  margin: 0 4px;
+  padding: 0 4px;
+}
+
+.file-row:hover,
+.branch-row:hover,
+.stash-row:hover,
+.graph-row:hover {
+  background: var(--hover);
+}
+
+.row.selected,
+.row.selected:hover {
+  background: var(--selected-surface);
+}
+
+/* A row's own text button carries the label; it must not look like a button. */
+.row button.grow,
+.row button.path {
+  text-align: left;
+  padding: 0;
+  border-radius: 0;
+}
+
+.row button.grow:hover:not(:disabled),
+.row button.path:hover:not(:disabled) {
+  background: none;
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+/* --- Section headers and counts ----------------------------------------- */
+
+.group-header {
+  min-height: 22px;
+  padding: 0 var(--gutter);
+  border-bottom: 1px solid var(--separator);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.section-title {
+  color: var(--text-secondary);
+  font-size: var(--text-size-sm);
+  font-weight: 590;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Counts sit at the right edge of their row, in tabular figures so a column
+   of them lines up. */
+.count {
+  flex: none;
+  color: var(--text-tertiary);
+  font-size: var(--text-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.pill {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  font-size: var(--text-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Tabs: a segmented control ------------------------------------------ */
+
+.tabs {
+  display: flex;
+  gap: 1px;
+  margin: 6px 6px;
+  padding: 2px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius);
+}
+
+.tabs button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 20px;
+  padding: 0 2px;
+  /* Four segments have to share 240px minus the panel gutters: at 12px
+     "Branches" no longer fits and was ellipsised to "Branch…". The selected
+     segment also keeps the same weight as the others, so selecting one
+     cannot change how much room it needs. */
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-secondary);
+}
+
+.tabs button[aria-selected='true'] {
+  background: var(--surface-raised);
+  box-shadow: var(--thumb-shadow);
+  color: var(--text);
+}
+
+.tabs button:hover:not([aria-selected='true']) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* --- Header ------------------------------------------------------------- */
+
+.header {
+  /* The head label plus three remote buttons do not always fit 240px; let the
+     control group drop to a second line instead of overflowing the panel. */
+  flex-wrap: wrap;
+  row-gap: 4px;
+  min-height: 30px;
+  padding: 5px var(--gutter);
+  border-bottom: 1px solid var(--separator);
+}
+
+/* The head label is the header's only unbounded item: without a floor of zero
+   it pushed Fetch / Pull / Push past a 240px viewport. */
+.header .branch {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--accent);
+  font-weight: 590;
+}
+
+.header .ops {
+  margin-left: auto;
+}
+
+.header .op-progress {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--text-size-sm);
+  color: var(--text-secondary);
+}
+
+/* --- Banners, empty states, toasts -------------------------------------- */
+
+.banner {
+  padding: 5px var(--gutter);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--separator);
+  /* A fixed height clipped the longer banner texts once they wrapped at 240px. */
+  min-height: var(--row-height);
+}
+
+.banner-warn {
+  background: var(--warning-surface);
+  color: var(--warning);
+}
+
+.banner-info {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.empty {
+  padding: 20px var(--gutter);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.empty p {
+  margin: 0 0 4px;
+}
+
+.empty p:first-child {
+  color: var(--text);
+}
+
+.empty .muted {
+  font-size: 12px;
+  white-space: normal;
+  text-wrap: pretty;
+}
+
+.toasts {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.toast {
+  border-top: 1px solid var(--separator);
+  background: color-mix(in srgb, var(--del) 14%, var(--surface));
+  font-size: 12px;
+}
+
+.toast .row {
+  white-space: normal;
+}
+
+.toast-info {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.toast-detail {
+  margin: 0;
+  padding: 4px var(--gutter);
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: var(--mono-size);
+}
+
+/* --- Dialog ------------------------------------------------------------- */
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gutter);
+}
+
+.dialog {
+  background: var(--surface-raised);
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 24%);
+  padding: 12px;
+  max-width: 100%;
+}
+
+.dialog h2 {
+  font-size: 13px;
+  font-weight: 590;
+  margin: 0 0 4px;
+}
+
+.dialog p {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.dialog-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 0;
+  height: auto;
+  white-space: normal;
+}
+
+/* --- Changes ------------------------------------------------------------ */
+
+.commit-box {
+  padding: var(--gutter);
+  border-bottom: 1px solid var(--separator);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.commit-box textarea {
+  resize: vertical;
+  line-height: 1.35;
+}
+
+.commit-box .row {
+  padding: 0;
+  min-height: 20px;
+  gap: 6px;
+}
+
+.commit-box label.grow {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.status {
+  flex: none;
+  width: 14px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+  font-weight: 590;
+  color: var(--text-tertiary);
+}
+
+.status-A {
+  color: var(--add);
+}
+
+.status-D {
+  color: var(--del);
+}
+
+.status-U {
+  color: var(--warning);
+}
+
+/* --- Branches ----------------------------------------------------------- */
+
+.branches .filter-row,
+.stash .push-row {
+  gap: 6px;
+  padding: 6px var(--gutter);
+  border-bottom: 1px solid var(--separator);
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+/* A branch row carries a name, optional ahead/behind counters, the last commit
+   subject and three text buttons — more than 240px can hold on one line. The
+   subject collapses first (flex-basis 0, so it never forces a wrap), the name
+   keeps a readable floor, and whatever still does not fit wraps onto another
+   line so Rename / Upstream / Delete stay inside the panel. */
+.branch-row {
+  flex-wrap: wrap;
+  height: auto;
+  row-gap: 2px;
+  padding: 2px 4px;
+}
+
+.branch-row .grow {
+  flex: 0 1 auto;
+  min-width: 6em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.branch-row .subject {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.branch-row button[aria-current='true'] {
+  color: var(--accent);
+  font-weight: 590;
+}
+
+.row-actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.row-actions button {
+  font-size: var(--text-size-sm);
+  color: var(--text-secondary);
+  padding: 0 4px;
+}
+
+.row-actions button:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.row-actions button.danger:hover:not(:disabled) {
+  color: var(--del);
+}
+
+/* --- Stash -------------------------------------------------------------- */
+
+.stash-row {
+  flex-wrap: wrap;
+  height: auto;
+  row-gap: 2px;
+  padding: 2px 4px;
+}
+
+/* The message is the only thing that identifies a stash, so it keeps a floor
+   and the Apply / Pop / Drop cluster wraps below it instead — at 240px the
+   message was otherwise squeezed down to two characters. */
+.stash-row .grow {
+  flex: 1 1 8em;
+}
+
+/* Same reasoning for the push row: the message input takes a line of its own
+   rather than collapsing behind the checkbox and the button. */
+.stash .push-row .grow {
+  flex: 1 1 12em;
+}
+
+.stash .push-row label {
+  display: flex;
+  align-items: center;
+  flex: none;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* --- Diff --------------------------------------------------------------- */
+
+.diff {
+  border-top: 1px solid var(--separator);
+}
+
+.diff-toolbar {
+  border-bottom: 1px solid var(--separator);
+  background: var(--surface-sunken);
+  min-height: 24px;
+  gap: 6px;
+}
+
+.diff-note {
+  padding: 3px var(--gutter);
+  font-size: 12px;
+  color: var(--warning);
+  background: var(--warning-surface);
+  white-space: normal;
+}
+
+.diff-line {
+  display: flex;
+  gap: 4px;
+  padding: 0 var(--gutter) 0 0;
+  white-space: pre;
+  line-height: 1.5;
+}
+
+.diff-line .lineno {
+  width: 2.5em;
+  flex: none;
+  text-align: right;
+  color: var(--text-tertiary);
+  user-select: none;
+}
+
+.diff-line .code {
+  overflow-x: auto;
+}
+
+/* Surface tints rather than the profile's ANSI backgrounds: the hue is the
+   user's green/red, the weight is ours, so text stays legible either way. */
+.diff-add {
+  background: color-mix(in srgb, var(--add) 14%, var(--surface));
+}
+
+.diff-del {
+  background: color-mix(in srgb, var(--del) 14%, var(--surface));
+}
+
+.diff-add .code {
+  color: color-mix(in srgb, var(--add) 55%, var(--text));
+}
+
+.diff-del .code {
+  color: color-mix(in srgb, var(--del) 55%, var(--text));
+}
+
+.diff-header {
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
+  /* The header has no line-number gutter to indent it, so it needs the
+     panel's own left padding. */
+  padding-left: var(--gutter);
+}
+
+.diff-error {
+  padding: 8px var(--gutter);
+  color: var(--del);
+  font-size: 12px;
+  white-space: normal;
+}
+
+/* --- Graph -------------------------------------------------------------- */
+
+.graph {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.virtual {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* A graph row is a <button>, so it shrink-to-fits its nowrap content and grew
+   past the panel (937px at a 240px viewport). Its height is fixed by the
+   virtual list, so it cannot wrap: pin it to the panel width and clip instead. */
+/* The virtual list positions rows arithmetically from ROW_HEIGHT (see
+   graph/lanes.tsx), so the rendered height must be exactly that — a taller
+   row would drift the whole list. `graph-row-height` in the appearance test
+   keeps the two in step. */
+.graph-row {
+  width: calc(100% - 8px);
+  height: var(--row-height);
+  min-height: var(--row-height);
+  overflow: hidden;
+  text-align: left;
+}
+
+/* The subject is what the row is for: it keeps a floor of its own so a pile
+   of ref chips cannot squeeze it out entirely. */
+.graph-row .grow {
+  flex: 1 1 4em;
+  min-width: 3em;
+}
+
+.graph-row .ref-more {
+  max-width: none;
+  flex: none;
+}
+
+/* At 240px a graph row holds the lane, the hash, one ref chip and the subject
+   and nothing more. The relative time is the least of those — the commit
+   detail carries the full timestamp — so it is what gives way. */
+@media (max-width: 280px) {
+  .graph-row .time {
+    display: none;
+  }
+}
+
+.graph-row .sha {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+/* Ref chips are the only other elastic part of a graph row: let them ellipsise
+   so a long branch label cannot push the subject out of a 240px panel. */
+.graph-row .ref {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ref {
+  flex: none;
+  max-width: 10ch;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-size-sm);
+}
+
+.commit-meta {
+  display: block;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  padding: 2px var(--gutter);
+}
+
+.commit-body {
+  margin: 0;
+  padding: 4px var(--gutter);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+}
+
+.commit-files .file-row {
+  width: calc(100% - 8px);
+  text-align: left;
+}
+
+.commit-files .path {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}

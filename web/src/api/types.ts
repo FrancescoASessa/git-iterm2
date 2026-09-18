@@ -1,0 +1,31 @@
+import type { components } from './types.gen'
+
+type S = components['schemas']
+
+export type RepoSnapshot = S['RepoSnapshot']
+export type FileChange = S['FileChange']
+export type Head = S['Head']
+export type Upstream = S['Upstream']
+export type Theme = S['Theme']
+export type ThemePalette = S['ThemePalette']
+export type Diff = S['Diff']
+export type DiffHunk = S['DiffHunk']
+export type DiffLine = S['DiffLine']
+export type Branches = S['Branches']
+export type BranchInfo = S['BranchInfo']
+export type GraphPage = S['GraphPage']
+export type GraphCommit = S['GraphCommit']
+export type GraphEdge = S['GraphEdge']
+export type CommitDetail = S['CommitDetail']
+export type CommitFile = S['CommitFile']
+export type StashEntry = S['StashEntry']
+export type StashList = S['StashList']
+export type ErrorBody = S['ErrorBody']
+export type ErrorCode = S['ErrorCode']
+export type OpStarted = S['OpStarted']
+export type SnapshotMessage = S['SnapshotMessage']
+export type OpProgressMessage = S['OpProgressMessage']
+export type OpDoneMessage = S['OpDoneMessage']
+export type ServerMessage = SnapshotMessage | OpProgressMessage | OpDoneMessage
+export type FileStatus = FileChange['status']
+export type TabId = 'changes' | 'branches' | 'graph' | 'stash'

@@ -1,0 +1,109 @@
+import asyncio
+import os
+import re
+from collections import deque
+from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import dataclass
+from pathlib import Path
+
+from git_iterm2.errors import GitError, classify_stderr
+
+GIT_ENV_OVERRIDES = {
+    "GIT_TERMINAL_PROMPT": "0",
+    "LC_ALL": "C",
+    "GIT_OPTIONAL_LOCKS": "0",
+    "GIT_EDITOR": "true",
+    "GIT_LITERAL_PATHSPECS": "1",
+}
+BASE_ARGS = ("-c", "color.ui=false", "-c", "core.quotepath=false")
+
+LineHandler = Callable[[str], Awaitable[None]]
+
+_LINE_SPLIT = re.compile(rb"[\r\n]")
+
+
+@dataclass(frozen=True)
+class GitResult:
+    stdout: str
+    stderr: str
+    returncode: int
+
+
+def git_env(overrides: Mapping[str, str] | None = None) -> dict[str, str]:
+    env = dict(os.environ)
+    env.update(GIT_ENV_OVERRIDES)
+    if overrides:
+        env.update(overrides)
+    return env
+
+
+def _failure(args: tuple[str, ...], result: GitResult) -> GitError:
+    code = classify_stderr(f"{result.stderr}\n{result.stdout}")
+    candidates = result.stderr.splitlines() + result.stdout.splitlines()
+    first = next((line.strip() for line in candidates if line.strip()), "")
+    message = first.removeprefix("fatal: ").removeprefix("error: ") or f"git {args[0]} failed"
+    return GitError(code, message, result.stderr)
+
+
+async def run_git(
+    cwd: Path,
+    *args: str,
+    check: bool = True,
+    stdin: str | None = None,
+    env: Mapping[str, str] | None = None,
+) -> GitResult:
+    proc = await asyncio.create_subprocess_exec(
+        "git",
+        *BASE_ARGS,
+        *args,
+        cwd=cwd,
+        env=git_env(env),
+        stdin=asyncio.subprocess.PIPE if stdin is not None else asyncio.subprocess.DEVNULL,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    out, err = await proc.communicate(stdin.encode() if stdin is not None else None)
+    assert proc.returncode is not None
+    result = GitResult(
+        out.decode("utf-8", "replace"), err.decode("utf-8", "replace"), proc.returncode
+    )
+    if check and result.returncode != 0:
+        raise _failure(args, result)
+    return result
+
+
+async def stream_git(cwd: Path, *args: str, on_line: LineHandler) -> GitResult:
+    proc = await asyncio.create_subprocess_exec(
+        "git",
+        *BASE_ARGS,
+        *args,
+        cwd=cwd,
+        env=git_env(),
+        stdin=asyncio.subprocess.DEVNULL,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    assert proc.stdout is not None and proc.stderr is not None
+    stdout_task = asyncio.create_task(proc.stdout.read())
+    tail: deque[str] = deque(maxlen=200)
+    pending = b""
+
+    async def emit(raw: bytes) -> None:
+        if raw:
+            line = raw.decode("utf-8", "replace")
+            tail.append(line)
+            await on_line(line)
+
+    while chunk := await proc.stderr.read(4096):
+        pending += chunk
+        *complete, pending = _LINE_SPLIT.split(pending)
+        for raw in complete:
+            await emit(raw)
+    await emit(pending)
+
+    stdout = await stdout_task
+    returncode = await proc.wait()
+    result = GitResult(stdout.decode("utf-8", "replace"), "\n".join(tail), returncode)
+    if returncode != 0:
+        raise _failure(args, result)
+    return result

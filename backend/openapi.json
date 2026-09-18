@@ -1,0 +1,1085 @@
+{
+  "components": {
+    "schemas": {
+      "AuthMessage": {
+        "properties": {
+          "token": {
+            "title": "Token",
+            "type": "string"
+          },
+          "type": {
+            "const": "auth",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "token"
+        ],
+        "title": "AuthMessage",
+        "type": "object"
+      },
+      "BranchInfo": {
+        "properties": {
+          "ahead": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ahead"
+          },
+          "behind": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Behind"
+          },
+          "full_ref": {
+            "title": "Full Ref",
+            "type": "string"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "is_remote": {
+            "title": "Is Remote",
+            "type": "boolean"
+          },
+          "last_commit_sha": {
+            "title": "Last Commit Sha",
+            "type": "string"
+          },
+          "last_commit_subject": {
+            "title": "Last Commit Subject",
+            "type": "string"
+          },
+          "last_commit_ts": {
+            "title": "Last Commit Ts",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "upstream": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upstream"
+          }
+        },
+        "required": [
+          "name",
+          "full_ref",
+          "is_remote",
+          "is_current",
+          "upstream",
+          "ahead",
+          "behind",
+          "last_commit_sha",
+          "last_commit_subject",
+          "last_commit_ts"
+        ],
+        "title": "BranchInfo",
+        "type": "object"
+      },
+      "Branches": {
+        "properties": {
+          "local": {
+            "items": {
+              "$ref": "#/components/schemas/BranchInfo"
+            },
+            "title": "Local",
+            "type": "array"
+          },
+          "remote": {
+            "items": {
+              "$ref": "#/components/schemas/BranchInfo"
+            },
+            "title": "Remote",
+            "type": "array"
+          }
+        },
+        "required": [
+          "local",
+          "remote"
+        ],
+        "title": "Branches",
+        "type": "object"
+      },
+      "CheckoutBody": {
+        "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Branch"
+          },
+          "create": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Create"
+          },
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "start_point": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Start Point"
+          }
+        },
+        "title": "CheckoutBody",
+        "type": "object"
+      },
+      "CommitBody": {
+        "properties": {
+          "amend": {
+            "default": false,
+            "title": "Amend",
+            "type": "boolean"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "title": "CommitBody",
+        "type": "object"
+      },
+      "CommitDetail": {
+        "properties": {
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/CommitFile"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "parents": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parents",
+            "type": "array"
+          },
+          "sha": {
+            "title": "Sha",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sha",
+          "parents",
+          "author",
+          "email",
+          "timestamp",
+          "subject",
+          "body",
+          "files"
+        ],
+        "title": "CommitDetail",
+        "type": "object"
+      },
+      "CommitFile": {
+        "properties": {
+          "orig_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orig Path"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "M",
+              "A",
+              "D",
+              "R",
+              "C",
+              "T",
+              "U"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "orig_path",
+          "status"
+        ],
+        "title": "CommitFile",
+        "type": "object"
+      },
+      "DeleteBranchBody": {
+        "properties": {
+          "force": {
+            "default": false,
+            "title": "Force",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "DeleteBranchBody",
+        "type": "object"
+      },
+      "Diff": {
+        "properties": {
+          "binary": {
+            "title": "Binary",
+            "type": "boolean"
+          },
+          "hunks": {
+            "items": {
+              "$ref": "#/components/schemas/DiffHunk"
+            },
+            "title": "Hunks",
+            "type": "array"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "binary",
+          "truncated",
+          "hunks"
+        ],
+        "title": "Diff",
+        "type": "object"
+      },
+      "DiffHunk": {
+        "properties": {
+          "header": {
+            "title": "Header",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/DiffLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "new_lines": {
+            "title": "New Lines",
+            "type": "integer"
+          },
+          "new_start": {
+            "title": "New Start",
+            "type": "integer"
+          },
+          "old_lines": {
+            "title": "Old Lines",
+            "type": "integer"
+          },
+          "old_start": {
+            "title": "Old Start",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "header",
+          "old_start",
+          "old_lines",
+          "new_start",
+          "new_lines",
+          "lines"
+        ],
+        "title": "DiffHunk",
+        "type": "object"
+      },
+      "DiffLine": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "context",
+              "add",
+              "del"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "new_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "New No"
+          },
+          "old_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Old No"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text",
+          "old_no",
+          "new_no"
+        ],
+        "title": "DiffLine",
+        "type": "object"
+      },
+      "DiffSplitBody": {
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "staged": {
+            "default": false,
+            "title": "Staged",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "DiffSplitBody",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "stderr": {
+            "default": "",
+            "title": "Stderr",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "stderr"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorCode": {
+        "enum": [
+          "NOT_A_REPO",
+          "CONFLICT",
+          "AUTH_REQUIRED",
+          "NON_FAST_FORWARD",
+          "LOCKED",
+          "DIRTY_TREE",
+          "INVALID_PATH",
+          "INVALID_ARGUMENT",
+          "UNSUPPORTED",
+          "GIT_FAILED",
+          "UNAUTHORIZED",
+          "FORBIDDEN",
+          "STALE_CURSOR"
+        ],
+        "title": "ErrorCode",
+        "type": "string"
+      },
+      "FileChange": {
+        "properties": {
+          "orig_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Orig Path"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "M",
+              "A",
+              "D",
+              "R",
+              "C",
+              "T",
+              "U"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "orig_path",
+          "status"
+        ],
+        "title": "FileChange",
+        "type": "object"
+      },
+      "GraphCommit": {
+        "properties": {
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEdge"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "lane": {
+            "title": "Lane",
+            "type": "integer"
+          },
+          "parents": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Parents",
+            "type": "array"
+          },
+          "refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Refs",
+            "type": "array"
+          },
+          "sha": {
+            "title": "Sha",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sha",
+          "parents",
+          "author",
+          "timestamp",
+          "subject",
+          "refs",
+          "lane",
+          "edges"
+        ],
+        "title": "GraphCommit",
+        "type": "object"
+      },
+      "GraphEdge": {
+        "properties": {
+          "from_lane": {
+            "title": "From Lane",
+            "type": "integer"
+          },
+          "half": {
+            "enum": [
+              "top",
+              "bottom"
+            ],
+            "title": "Half",
+            "type": "string"
+          },
+          "to_lane": {
+            "title": "To Lane",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "from_lane",
+          "to_lane",
+          "half"
+        ],
+        "title": "GraphEdge",
+        "type": "object"
+      },
+      "GraphPage": {
+        "properties": {
+          "commits": {
+            "items": {
+              "$ref": "#/components/schemas/GraphCommit"
+            },
+            "title": "Commits",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "commits",
+          "next_cursor"
+        ],
+        "title": "GraphPage",
+        "type": "object"
+      },
+      "Head": {
+        "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "detached_sha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detached Sha"
+          }
+        },
+        "required": [
+          "branch",
+          "detached_sha"
+        ],
+        "title": "Head",
+        "type": "object"
+      },
+      "OpDoneMessage": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "op_id": {
+            "title": "Op Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "op_done",
+            "default": "op_done",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "op_id",
+          "ok",
+          "error"
+        ],
+        "title": "OpDoneMessage",
+        "type": "object"
+      },
+      "OpProgressMessage": {
+        "properties": {
+          "line": {
+            "title": "Line",
+            "type": "string"
+          },
+          "op_id": {
+            "title": "Op Id",
+            "type": "string"
+          },
+          "pct": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pct"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "type": {
+            "const": "op_progress",
+            "default": "op_progress",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "op_id",
+          "phase",
+          "pct",
+          "line"
+        ],
+        "title": "OpProgressMessage",
+        "type": "object"
+      },
+      "OpStarted": {
+        "properties": {
+          "op_id": {
+            "title": "Op Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "op_id"
+        ],
+        "title": "OpStarted",
+        "type": "object"
+      },
+      "PathsBody": {
+        "properties": {
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Paths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "title": "PathsBody",
+        "type": "object"
+      },
+      "RenameBranchBody": {
+        "properties": {
+          "new_name": {
+            "title": "New Name",
+            "type": "string"
+          },
+          "old_name": {
+            "title": "Old Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "old_name",
+          "new_name"
+        ],
+        "title": "RenameBranchBody",
+        "type": "object"
+      },
+      "RepoSnapshot": {
+        "properties": {
+          "conflicted": {
+            "items": {
+              "$ref": "#/components/schemas/FileChange"
+            },
+            "title": "Conflicted",
+            "type": "array"
+          },
+          "head": {
+            "$ref": "#/components/schemas/Head"
+          },
+          "root": {
+            "title": "Root",
+            "type": "string"
+          },
+          "staged": {
+            "items": {
+              "$ref": "#/components/schemas/FileChange"
+            },
+            "title": "Staged",
+            "type": "array"
+          },
+          "stash_count": {
+            "title": "Stash Count",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "clean",
+              "merging",
+              "rebasing",
+              "cherry-picking"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "theme": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Theme"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "unstaged": {
+            "items": {
+              "$ref": "#/components/schemas/FileChange"
+            },
+            "title": "Unstaged",
+            "type": "array"
+          },
+          "untracked": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Untracked",
+            "type": "array"
+          },
+          "upstream": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Upstream"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "root",
+          "head",
+          "upstream",
+          "state",
+          "staged",
+          "unstaged",
+          "untracked",
+          "conflicted",
+          "stash_count",
+          "theme"
+        ],
+        "title": "RepoSnapshot",
+        "type": "object"
+      },
+      "SnapshotMessage": {
+        "properties": {
+          "repo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepoSnapshot"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "shell_integration": {
+            "default": true,
+            "title": "Shell Integration",
+            "type": "boolean"
+          },
+          "type": {
+            "const": "snapshot",
+            "default": "snapshot",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "repo",
+          "shell_integration"
+        ],
+        "title": "SnapshotMessage",
+        "type": "object"
+      },
+      "StashEntry": {
+        "properties": {
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "sha": {
+            "title": "Sha",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index",
+          "message",
+          "sha",
+          "timestamp"
+        ],
+        "title": "StashEntry",
+        "type": "object"
+      },
+      "StashIndexBody": {
+        "properties": {
+          "index": {
+            "minimum": 0,
+            "title": "Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "index"
+        ],
+        "title": "StashIndexBody",
+        "type": "object"
+      },
+      "StashList": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/StashEntry"
+            },
+            "title": "Entries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "entries"
+        ],
+        "title": "StashList",
+        "type": "object"
+      },
+      "StashPushBody": {
+        "properties": {
+          "include_untracked": {
+            "default": false,
+            "title": "Include Untracked",
+            "type": "boolean"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "title": "StashPushBody",
+        "type": "object"
+      },
+      "Theme": {
+        "description": "Both appearance palettes, plus the profile's monospace font.\n\nBoth palettes always travel, because a macOS light/dark switch fires no\niTerm2 event: with a single palette the panel would keep the stale one\nuntil the next focus change. When the profile does not use separate\nlight and dark colours the two palettes are identical.",
+        "properties": {
+          "dark": {
+            "$ref": "#/components/schemas/ThemePalette"
+          },
+          "light": {
+            "$ref": "#/components/schemas/ThemePalette"
+          },
+          "mono_family": {
+            "title": "Mono Family",
+            "type": "string"
+          },
+          "mono_size": {
+            "title": "Mono Size",
+            "type": "number"
+          }
+        },
+        "required": [
+          "light",
+          "dark",
+          "mono_family",
+          "mono_size"
+        ],
+        "title": "Theme",
+        "type": "object"
+      },
+      "ThemePalette": {
+        "description": "The profile colours the panel honours, for one system appearance.\n\nThe panel's own surfaces (backgrounds, separators, secondary text) are\nneutral and resolved in CSS from the system appearance, so the profile\ncontributes only the colours that carry meaning: the user's diff green\nand red, and the accent used for branch and ref labels.",
+        "properties": {
+          "accent": {
+            "title": "Accent",
+            "type": "string"
+          },
+          "added": {
+            "title": "Added",
+            "type": "string"
+          },
+          "removed": {
+            "title": "Removed",
+            "type": "string"
+          }
+        },
+        "required": [
+          "accent",
+          "added",
+          "removed"
+        ],
+        "title": "ThemePalette",
+        "type": "object"
+      },
+      "Upstream": {
+        "properties": {
+          "ahead": {
+            "title": "Ahead",
+            "type": "integer"
+          },
+          "behind": {
+            "title": "Behind",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "ahead",
+          "behind"
+        ],
+        "title": "Upstream",
+        "type": "object"
+      },
+      "UpstreamBody": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "upstream": {
+            "title": "Upstream",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "upstream"
+        ],
+        "title": "UpstreamBody",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "git-iterm2",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {}
+}
