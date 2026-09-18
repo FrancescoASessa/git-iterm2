@@ -5,8 +5,22 @@ of the active iTerm2 session and lets you inspect and operate on it without leav
 terminal: branch state, staged/unstaged changes, diffs, branches, commit graph, stash and
 remote operations.
 
-> **Screenshot:** coming soon — the panel showing the Changes tab, inline diff open, next to
-> the "Profiles" and "Session Status" toolbelt tools.
+Your terminal already knows which repository you are in. Now your git panel does too.
+
+![The panel showing staged, unstaged and untracked files next to a terminal session](docs/images/panel-changes.png)
+
+<table>
+  <tr>
+    <td><img src="docs/images/panel-branches.png" alt="Branches tab: local branches with checkout, merge and delete actions"></td>
+    <td><img src="docs/images/panel-graph.png" alt="Graph tab: commit graph with lanes, refs and merge history"></td>
+    <td><img src="docs/images/panel-stash.png" alt="Stash tab: stash entries with apply, pop and drop"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Branches</sub></td>
+    <td align="center"><sub>Graph</sub></td>
+    <td align="center"><sub>Stash</sub></td>
+  </tr>
+</table>
 
 ## Requirements
 
