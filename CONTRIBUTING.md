@@ -14,8 +14,8 @@ packaging/   Assembles backend + built web/dist into the GitPanel.zip iTerm2 scr
 
 Within `backend/src/git_iterm2/`: `iterm/` (iTerm2 API only) → `core/` (application layer,
 no HTTP/iTerm2 knowledge) → `git/` (pure git CLI wrapper, no iTerm2/HTTP knowledge) → `api/`
-(aiohttp app translating `core/` to HTTP/WebSocket). See
-`docs/superpowers/specs/2026-09-17-git-iterm2-design.md` for the full design.
+(aiohttp app translating `core/` to HTTP/WebSocket). Each layer knows only the one below
+it; that boundary is the design, and a change that crosses it needs a good reason.
 
 ## Generated files — never hand-edit
 

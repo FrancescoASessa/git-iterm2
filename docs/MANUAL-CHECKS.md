@@ -18,24 +18,44 @@ this checklist can settle.
       Double-click the archive, or run `packaging/install.sh dist/GitPanel.zip`.
       iTerm2 asks whether to launch the script automatically or manually — answer it.
       Result: ______________________________________________________
-- [ ] **Which directory did iTerm2 actually import the script into?** Check both:
+- [x] **Which directory did iTerm2 actually import the script into?** Check both:
       `~/Library/Application Support/iTerm2/Scripts/GitPanel` and
       `~/Library/Application Support/iTerm2/Scripts/AutoLaunch/GitPanel`.
-      Actual path: __________________________________________________
-      (`packaging/uninstall.sh` currently checks both locations because this hadn't been
-      verified yet; once answered, it can be simplified to the one that's actually used.)
-- [ ] After import, quit and reopen iTerm2. Does the script start automatically (AutoLaunch),
+      Actual path: `~/Library/Application Support/iTerm2/Scripts/GitPanel` -- **not**
+      `AutoLaunch/`. Verified 2026-09-18 against a real iTerm2 3.7.1. See
+      docs/ITERM2-FINDINGS.md. (`packaging/uninstall.sh` still checks both locations as a
+      defensive fallback, but the one actually used is now known.)
+- [x] After import, quit and reopen iTerm2. Does the script start automatically (AutoLaunch),
       or does it need to be started manually via Scripts menu?
-      Result: ______________________________________________________
-- [ ] Open **View › Toolbelt › Git**. Does the panel appear and load a snapshot?
-      Result: ______________________________________________________
+      Result: does not start automatically -- it was imported outside `AutoLaunch/`, so
+      there is nothing for AutoLaunch to pick up. Start it from the import dialog's
+      "Launch" button, or later from the Scripts menu. Verified 2026-09-18; `README.md` and
+      `packaging/install.sh` previously said otherwise and have been corrected.
+- [x] Open **View › Toolbelt › Git**. Does the panel appear and load a snapshot?
+      Result: yes, once the toolbelt itself is shown (see the "Show Toolbelt" note below --
+      ticking the tool alone does not display it). With the toolbelt shown and Git ticked,
+      the panel loaded the active session's repository, branch, untracked files, and all
+      four tabs. Verified 2026-09-18.
+- [x] **Ticking Git under View › Toolbelt is not the same as showing the toolbelt.** "Show
+      Toolbelt" (⇧⌘B) is a separate toggle; with the toolbelt hidden, a correctly-registered,
+      correctly-running panel is invisible with no error anywhere. Verified 2026-09-18 --
+      this cost real debugging time. See docs/ITERM2-FINDINGS.md.
 
 ## Toolbelt persistence
 
 - [ ] With the Git tool visible in the toolbelt, quit and reopen iTerm2. Is the tool still
       present in the toolbelt afterwards, or does it have to be re-added via
       View › Toolbelt › Git each time?
-      Result: ______________________________________________________
+      Result: ______________________________________________________ (genuinely open --
+      see the related, narrower finding below before assuming this is answered.)
+- [x] **Related but narrower finding (verified 2026-09-18, not a substitute for the check
+      above):** a tool's registration persists in iTerm2's *preferences* independently of
+      whether the registering script's process is still running -- a probe script's tool
+      stayed listed and ticked for hours after that script had exited, with iTerm2 never
+      quit. This means uninstalling the script's files does **not** remove the toolbelt menu
+      entry; the user must untick it manually under View › Toolbelt (see the Uninstall
+      section below). Whether the entry also survives a full iTerm2 quit/reopen (the item
+      above) was not tested and remains open. See docs/ITERM2-FINDINGS.md.
 - [ ] Restart just the script (Scripts › Manage › kill and re-run, or `kill` the process and
       let AutoLaunch restart it) without quitting iTerm2. Does the toolbelt panel reconnect
       on its own, or does it need the toolbelt to be toggled/reopened?
@@ -71,6 +91,12 @@ ref labels, primary button, focus ring) and the diff green/red come from the pro
       open, without touching iTerm2. Does the panel follow immediately (no focus change,
       no reopen)?
       Result: ______________________________________________________
+      (Genuinely untested as of 2026-09-18. This is the untested assumption behind the
+      light/dark surface theming added in `feat(ui): restyle the panel as a native macOS
+      surface`: the CSS relies on `prefers-color-scheme` inside the toolbelt's WKWebView,
+      and whether that media query re-resolves live when macOS appearance changes while the
+      webview is already running -- rather than only on next load -- has not been observed.
+      Do not assume either answer.)
 - [ ] Do the branch label and ref chips use the profile's blue (ANSI 4), and do diff
       added/removed lines use the profile's green/red as a tint rather than a solid
       terminal background?
@@ -171,11 +197,17 @@ as an issue even though nothing here can auto-detect it.
 
 ## Uninstall
 
+**Known going in (verified 2026-09-18, see docs/ITERM2-FINDINGS.md): a toolbelt tool's
+registration lives in iTerm2's own preferences, not in the script's files. Deleting the
+files cannot and does not remove the "Git" entry from View › Toolbelt -- the user must
+untick it there themselves.** Do not treat the entry still being listed after an uninstall
+as a bug in `packaging/uninstall.sh`; check the box below with that expectation in mind.
+
 - [ ] Run `packaging/uninstall.sh` and confirm. Does it report removing the path(s) found in
       the "which directory" check above?
       Result: ______________________________________________________
 - [ ] After uninstalling, confirm both candidate directories
       (`~/Library/Application Support/iTerm2/Scripts/GitPanel` and
-      `.../Scripts/AutoLaunch/GitPanel`) are gone, and that the Git tool no longer appears
-      under View › Toolbelt after restarting iTerm2.
+      `.../Scripts/AutoLaunch/GitPanel`) are gone. Separately, confirm the Git entry is still
+      listed (ticked) under View › Toolbelt until unticked by hand, and untick it.
       Result: ______________________________________________________

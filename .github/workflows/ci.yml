@@ -19,6 +19,22 @@ on:
 permissions:
   contents: read
 
+# One in-flight CI run per ref: pushing again to a branch cancels the suite
+# for the commit that has just been superseded instead of running two full
+# macOS matrices for a result nobody will read.
+#
+# The group keys on `github.ref`, not on the branch name shared by the push
+# and pull_request events. Collapsing those two into one group would let a
+# branch push cancel the run attached to the pull request, and a cancelled
+# run reports as a failed check on the PR -- worse than the duplicate it
+# would save. `github.workflow` keeps this group from colliding with
+# `release.yml`'s.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # No `timeout-minutes` here: a job that calls a reusable workflow does not
+  # accept one. Each called job sets its own in `tests.yml`.
   tests:
     uses: ./.github/workflows/tests.yml

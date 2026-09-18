@@ -1,7 +1,7 @@
 # git-iterm2 backend
 
 Python backend for the git-iterm2 toolbelt panel: git service, active-repo controller and a
-local REST/WebSocket API. See `docs/superpowers/specs/2026-09-17-git-iterm2-design.md`.
+local REST/WebSocket API. See `CONTRIBUTING.md` for the layer boundaries.
 
 ## Development
 

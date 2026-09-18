@@ -9,6 +9,17 @@
 # locations depending on how it was imported; this checks both and deletes
 # only the exact ones found. Never a broader directory -- nothing else
 # under Scripts/ is touched.
+#
+# Verified 2026-09-18 against a real iTerm2 3.7.1 (docs/ITERM2-FINDINGS.md):
+# a normal script-archive import lands in Scripts/GitPanel, NOT
+# Scripts/AutoLaunch/GitPanel. Both are still checked below as a defensive
+# fallback in case a differently-configured import used the other path.
+#
+# IMPORTANT: this script deletes files only. It CANNOT untick "Git" from
+# View > Toolbelt -- that registration lives in iTerm2's own preferences,
+# confirmed to persist independently of whether the script is even running,
+# not in anything under Scripts/. After running this script, untick Git
+# under View > Toolbelt yourself if you no longer want it listed.
 set -euo pipefail
 
 log()  { printf '%s\n' "$*"; }
@@ -27,12 +38,12 @@ done
 ITERM_SCRIPTS_DIR="${HOME}/Library/Application Support/iTerm2/Scripts"
 # Two candidate locations, both derived directly from ITERM_SCRIPTS_DIR:
 #   - AutoLaunch/GitPanel: where a script configured to start with iTerm2
-#     normally lands (what install.sh documents and what Task 9's manual
-#     checklist should confirm).
-#   - GitPanel: iTerm2 also supports importing a script without AutoLaunch;
-#     nothing in this repo observed which one a real import actually uses
-#     (no import has been run against a real iTerm2 yet), so both are
-#     checked rather than assuming.
+#     would land, if it were imported that way.
+#   - GitPanel: where a real import against iTerm2 3.7.1 was actually
+#     observed to land (verified 2026-09-18, docs/ITERM2-FINDINGS.md) --
+#     this script does NOT start automatically with iTerm2.
+# Both are checked rather than assuming only the observed one, in case a
+# differently-configured import used the other path.
 CANDIDATES=(
   "${ITERM_SCRIPTS_DIR}/AutoLaunch/GitPanel"
   "${ITERM_SCRIPTS_DIR}/GitPanel"
@@ -77,3 +88,9 @@ for target in "${FOUND[@]}"; do
   rm -rf -- "${target}"
   log "Removed ${target}."
 done
+
+log ""
+log "Note: 'Git' will still be listed (and ticked) under View > Toolbelt."
+log "That registration lives in iTerm2's own preferences, not in the files"
+log "just removed, and this script cannot clear it. Untick it yourself:"
+log "View > Toolbelt > Git."

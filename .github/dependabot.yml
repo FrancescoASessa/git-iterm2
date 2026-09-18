@@ -1,0 +1,88 @@
+# Dependency updates.
+#
+# The GitHub Actions block is the one that matters most: every `uses:` in
+# `.github/workflows/` is pinned to an immutable commit SHA, which is exactly
+# what stops an action's tag being repointed at new code -- and also what
+# stops those actions ever being updated by themselves. Dependabot rewrites
+# the SHA *and* the `# vX.Y.Z` comment next to it, so the pins stay current
+# without anyone hand-resolving a SHA. Without this file, pinning slowly
+# turns into "running a year-old action forever".
+#
+# Everything is weekly and grouped: three ecosystems updating individually
+# would open a dozen pull requests a week on a project this size, and a pull
+# request nobody reads is not a security control.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    # Always "/" for this ecosystem: Dependabot looks in `.github/workflows/`
+    # relative to the repository root, not in this directory literally.
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Rome"
+    groups:
+      # One pull request for all routine action bumps. Majors are left out
+      # deliberately, so each one arrives on its own and gets read: an action
+      # major is usually a runner/runtime change (Node 20 to Node 24, and
+      # similar) that can fail at a completely different layer than the diff
+      # suggests.
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+  - package-ecosystem: "npm"
+    directory: "/web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Rome"
+    groups:
+      # Split by dependency type rather than lumped together: a runtime bump
+      # (preact) ships to users inside GitPanel.zip, a toolchain bump
+      # (vite, eslint, playwright) does not. They deserve different attention,
+      # so they should not arrive in the same diff.
+      web-runtime:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      web-toolchain:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  # `uv`, not `pip`: the backend's dependencies live in `backend/uv.lock`,
+  # and the `pip` ecosystem does not read or update that file -- it would
+  # find nothing here and silently do nothing. Dependabot has supported
+  # `uv` natively since March 2025 (version updates) and December 2025
+  # (security updates), understanding pyproject.toml and uv.lock together.
+  - package-ecosystem: "uv"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Rome"
+    groups:
+      backend:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "chore"
+      include: "scope"

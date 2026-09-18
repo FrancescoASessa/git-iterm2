@@ -2,7 +2,8 @@
 
 Produced by running `packaging/verify_iterm2.py` (see that file's docstring
 for how to run it) against a real, running iTerm2. This fills in the
-"Remaining" items of spec §10 (`docs/superpowers/specs/2026-09-17-git-iterm2-design.md`).
+questions that could only be answered by a running iTerm2, plus everything later
+learned by installing the panel for real.
 
 ## Environment
 
@@ -51,6 +52,67 @@ could not be installed; these three defects are why, and are now fixed
   3.12, 3.13**. `python_requires`'s pin must name one of these or iTerm2 has nothing to
   provision against.
 
+## Import location, toolbelt registration and lifecycle
+
+Verified 2026-09-18, live: importing a freshly built `GitPanel.zip` into the same real
+iTerm2 (3.7.1) and watching what iTerm2 actually did with it, then separately watching an
+already-registered toolbelt tool over several hours.
+
+- **iTerm2 imports the script to `~/Library/Application Support/iTerm2/Scripts/GitPanel`,
+  not to `AutoLaunch/`.** This answers the "which directory" question left open in
+  `docs/MANUAL-CHECKS.md`. A script imported this way does **not** start automatically when
+  iTerm2 launches -- the import dialog offers a "Launch" button, and otherwise the user
+  starts it manually from the Scripts menu. `packaging/install.sh`'s "Next steps" text and
+  `README.md`'s install steps previously told the user that quitting and reopening iTerm2
+  would let AutoLaunch pick the script up; that was wrong and has been corrected (see
+  `packaging/install.sh` and `README.md`).
+
+- **`~/.config/iterm2/AppSupport` is a symlink to `~/Library/Application Support/iTerm2`**
+  (confirmed: same inode). This is why the Script Console's log lines for this script show
+  its path as `~/.config/iterm2/AppSupport/Scripts/GitPanel/...` rather than the
+  `~/Library/...` path the script was actually imported to -- both paths name the same
+  files. `packaging/uninstall.sh` operates on the `~/Library/Application Support/...` path,
+  which is correct as written; do not "fix" it toward the `~/.config/...` alias.
+
+- **Script Console logging works (spec §9 bullet 2).** The panel's stderr reaches
+  Scripts > Manage > Console. Observed lines:
+  `INFO git_iterm2.panel panel listening on port 62316` and
+  `INFO git_iterm2.panel panel registered in the toolbelt`.
+
+- **Toolbelt tool registrations persist in iTerm2's preferences independently of the
+  registering script's process.** A probe script registered during earlier verification
+  work still appeared, ticked, under View > Toolbelt hours after that script had exited.
+  The registration lives in iTerm2's own preferences, not in anything this project writes
+  to disk. Consequence: **uninstalling the script's files cannot remove the toolbelt menu
+  entry** -- `packaging/uninstall.sh` deletes the script directory, but the user must
+  manually untick the tool under View > Toolbelt themselves. This is now noted in
+  `packaging/uninstall.sh`'s own output, in `README.md`'s uninstall step, and in
+  `docs/MANUAL-CHECKS.md`'s Uninstall section.
+
+- **Ticking a tool under View > Toolbelt does not itself show the toolbelt.** "Show
+  Toolbelt" (⇧⌘B) is a separate toggle. With the toolbelt hidden, a correctly-registered,
+  correctly-running panel is invisible, with no error anywhere -- nothing in iTerm2's UI
+  hints that the toolbelt itself is hidden. This cost real debugging time during
+  verification; worth remembering before concluding a registration has failed.
+
+- **End to end, the panel works.** With the toolbelt shown (⇧⌘B) and Git ticked, the panel
+  showed the active session's repository, its current branch, its untracked files, and all
+  four tabs (Changes, Branches, Graph, Stash).
+
+## Profile colours: separate light/dark pairs
+
+Verified 2026-09-18 against the user's real profiles, which have "Use Separate Colors for
+Light and Dark Mode" enabled -- `Background Color (Light)` / `Background Color (Dark)` key
+pairs (and the same pairing for foreground, selection, cursor and all 16 ANSI colours).
+
+The `iterm2` Python library's legacy properties (e.g. `profile.background_color`) return the
+**light** variant regardless of which mode the profile is actually using. A panel that reads
+only the legacy properties therefore renders light colours even on a dark terminal. The
+library also exposes the light/dark-suffixed variants directly, and
+`git_iterm2.iterm.theme` (`backend/src/git_iterm2/iterm/theme.py`) already reads both and
+ships both palettes so the panel's CSS can choose -- this verification confirms that is the
+correct approach against a real profile using separate colours, not just a theoretical one.
+
 ## Raw output
 
 ```json
@@ -80,8 +142,10 @@ could not be installed; these three defects are why, and are now fixed
 }
 ```
 
-Toolbelt tool state after the script exited, and after re-running it: not
-observed in this run -- see question 2 below, which is left open.
+Toolbelt tool state after the script exited, and after re-running it: not observed by
+`verify_iterm2.py` in this run -- see question 2 below. (A separate, later observation from a
+different probe script did confirm the registration outlives the process; see "Import
+location, toolbelt registration and lifecycle" above and question 2's updated answer.)
 
 ## Questions and answers
 
@@ -110,15 +174,22 @@ token requirement to accommodate the webview would be a real regression.
 Drives whether the panel must re-register on every start (spec §10 says it
 must).
 
-**Answer:** Unanswered by this run -- the toolbelt-tool state after the
-script exited, and after a second run, was not reported back. **Left open.**
-It does not change what we build: spec §10 already requires the panel to
-re-register on every start, and that is correct regardless of which way
-this question resolves. If iTerm2 does keep showing a stale registration
-after the process that registered it exits, that stale entry would carry a
-now-dead per-process token from a previous run -- re-registering on every
-start is exactly what replaces it with a live, current token, so
-mandatory re-registration is not weakened by leaving this open.
+**Partially answered, 2026-09-18.** The registration half is now confirmed: a probe
+script's toolbelt tool stayed listed and ticked under View > Toolbelt for hours after that
+script's own process had exited -- see "Import location, toolbelt registration and
+lifecycle" above. The registration lives in iTerm2's own preferences, not in anything this
+project writes to disk, so it outlives the process that created it. **Still open:** whether
+iTerm2 reopens the previously-registered URL against a *new* run of the script
+automatically, or whether the panel only reconnects after the toolbelt is
+toggled/reopened -- not exercised this run (see `docs/MANUAL-CHECKS.md`'s "Restart just the
+script" item). Whether the tool survives a full iTerm2 quit/reopen is also still open
+(`docs/MANUAL-CHECKS.md`'s "Toolbelt persistence" section) and was deliberately not guessed
+at here. None of this changes what we build: spec §10 already requires the panel to
+re-register on every start, and that is correct regardless of which way the remaining half
+resolves. If iTerm2 does keep showing a stale registration after the process that
+registered it exits, that stale entry would carry a now-dead per-process token from a
+previous run -- re-registering on every start is exactly what replaces it with a live,
+current token, so mandatory re-registration is not weakened by leaving this open.
 
 ### 3. Is there a usable profile-change signal, or is re-reading the profile on active-session change enough?
 

@@ -25,14 +25,32 @@ remote operations.
    is iTerm2's supported unsigned-import format — `.its` requires a signature we cannot
    produce). iTerm2 will ask whether to launch the script automatically or manually — this
    is expected; you must answer it yourself, and nothing in this project bypasses that
-   prompt. A matching `.sha256` file lets you confirm the download wasn't corrupted in
-   transit; it does not prove who published the archive, since it comes from the same host
-   as the archive itself.
-4. If you don't see it registered right away, quit and reopen iTerm2 once so AutoLaunch
-   picks it up.
-5. Open **View › Toolbelt › Git**.
+   prompt.
+4. **Optional, and worth the ten seconds: check where the archive came from.** Every
+   release archive carries a signed [build provenance attestation][attestation] binding it
+   to the commit and the GitHub Actions run that produced it. With the
+   [GitHub CLI](https://cli.github.com) installed:
 
-To remove it later, run `packaging/uninstall.sh`.
+   ```sh
+   gh attestation verify GitPanel.zip --repo FrancescoASessa/git-iterm2
+   ```
+
+   The `.sha256` published next to the archive only proves your download is intact — it is
+   served from the same place as the archive, so it says nothing about who produced it. The
+   attestation is what ties the file to this repository. Neither makes macOS or iTerm2 treat
+   the archive as signed: the unsigned-import prompt in step 3 is unchanged.
+5. iTerm2 imports the script to `Scripts/GitPanel`, **not** `Scripts/AutoLaunch/`, so it does
+   not start automatically when iTerm2 launches (verified against a real iTerm2 3.7.1 — see
+   [`docs/ITERM2-FINDINGS.md`](docs/ITERM2-FINDINGS.md)). Launch it from the import dialog's
+   "Launch" button, or later from **Scripts › GitPanel**.
+6. Show the toolbelt — **View › Show Toolbelt** (`⇧⌘B`) — then tick **View › Toolbelt › Git**.
+   These are two separate toggles: ticking the tool alone will not display the toolbelt.
+
+[attestation]: https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds
+
+To remove it later, run `packaging/uninstall.sh`. It deletes the script's files, but it
+cannot untick "Git" from **View › Toolbelt** — that registration lives in iTerm2's own
+preferences and persists independently of the files, so untick it there yourself.
 
 ## What it does
 
