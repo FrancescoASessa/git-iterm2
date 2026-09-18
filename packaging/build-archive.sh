@@ -1,12 +1,21 @@
 #!/usr/bin/env bash
-# Build the GitPanel.its iTerm2 script archive.
+# Build the GitPanel.zip iTerm2 script archive.
 #
-# Usage: packaging/build-its.sh [OUTPUT_DIR] [--skip-web-build] [--web-dist PATH]
+# Usage: packaging/build-archive.sh [OUTPUT_DIR] [--skip-web-build] [--web-dist PATH]
 #
 # OUTPUT_DIR defaults to "dist" resolved against the repo root. Produces
-# OUTPUT_DIR/GitPanel.its and OUTPUT_DIR/GitPanel.its.sha256 (checksum of
-# the bare "GitPanel.its" filename, so `install.sh` can verify it after
+# OUTPUT_DIR/GitPanel.zip and OUTPUT_DIR/GitPanel.zip.sha256 (checksum of
+# the bare "GitPanel.zip" filename, so `install.sh` can verify it after
 # downloading both files into the same directory, wherever that is).
+#
+# Why .zip and not .its: iTerm2's importer (iTermScriptImporter.m,
+# `verifyAndUnwrapArchive:requireSignature:`) requires anything with a
+# `.its` extension to pass `smellsLikeSignedArchive:` -- a signed container
+# format we have no certificate to produce. A plain zip named `.its` fails
+# that check with "This script archive is corrupt and cannot be installed."
+# `.zip` is the extension iTerm2's `reallyImportScriptFromURL` accepts for
+# an unsigned, user-initiated import, and is the only path available to us.
+# See docs/ITERM2-FINDINGS.md.
 #
 # By default this rebuilds the web UI (`cd web && npm ci && npm run build`)
 # before packaging it. Pass --skip-web-build to reuse whatever is already
@@ -82,7 +91,18 @@ if [[ ! "${VERSION}" =~ ^[0-9A-Za-z.+-]+$ ]]; then
   exit 1
 fi
 
-echo "==> Building GitPanel.its version ${VERSION}"
+# The single source of truth for the Python version pinned in setup.cfg's
+# `python_requires`. iTerm2's iTermSetupCfgParser.m silently discards
+# python_requires unless it starts with "=" (an exact pin, not a floor), so
+# this must be one specific version this iTerm2 build actually offers --
+# verified 2026-09-18: 3.10, 3.11, 3.12, 3.13 (see docs/ITERM2-FINDINGS.md).
+# It must also satisfy backend/pyproject.toml's `requires-python = ">=3.11"`
+# floor. Substituted into setup.cfg.in below alongside @VERSION@ so this
+# stays the only place it's written, rather than also being hardcoded in
+# setup.cfg.in itself where the two could drift apart.
+PYTHON_VERSION="3.12"
+
+echo "==> Building GitPanel.zip version ${VERSION} (python_requires ==${PYTHON_VERSION})"
 
 if [[ "${SKIP_WEB_BUILD}" -eq 1 ]]; then
   WEB_DIST="${WEB_DIST_OVERRIDE:-${REPO_ROOT}/web/dist}"
@@ -145,7 +165,8 @@ PKG_DIR="${STAGE_ROOT}/GitPanel"
 mkdir -p "${PKG_DIR}"
 
 echo "==> Assembling staging directory"
-sed "s/@VERSION@/${VERSION}/" "${SCRIPT_DIR}/setup.cfg.in" > "${STAGE_ROOT}/setup.cfg"
+sed -e "s/@VERSION@/${VERSION}/" -e "s/@PYTHON_VERSION@/${PYTHON_VERSION}/" \
+  "${SCRIPT_DIR}/setup.cfg.in" > "${STAGE_ROOT}/setup.cfg"
 cp "${SCRIPT_DIR}/GitPanel/GitPanel.py" "${PKG_DIR}/GitPanel.py"
 
 cp -R "${REPO_ROOT}/backend/src/git_iterm2" "${PKG_DIR}/git_iterm2"
@@ -165,13 +186,16 @@ rm -rf "${PKG_DIR}/git_iterm2/web"
 cp -R "${WEB_DIST}" "${PKG_DIR}/git_iterm2/web"
 
 echo "==> Zipping archive"
-ARCHIVE="${OUT_DIR}/GitPanel.its"
+# .zip, not .its: see the note at the top of this script and
+# docs/ITERM2-FINDINGS.md -- a plain zip named .its fails iTerm2's
+# smellsLikeSignedArchive: check, since we have no signing certificate.
+ARCHIVE="${OUT_DIR}/GitPanel.zip"
 rm -f "${ARCHIVE}"
 ( cd "${WORK_DIR}" && zip -r -X "${ARCHIVE}" GitPanel > /dev/null )
 
 echo "==> Writing checksum"
-( cd "${OUT_DIR}" && shasum -a 256 "$(basename "${ARCHIVE}")" > GitPanel.its.sha256 )
+( cd "${OUT_DIR}" && shasum -a 256 "$(basename "${ARCHIVE}")" > GitPanel.zip.sha256 )
 
 SIZE_BYTES="$(wc -c < "${ARCHIVE}" | tr -d '[:space:]')"
 echo "==> Built ${ARCHIVE} (${SIZE_BYTES} bytes)"
-echo "==> Checksum: ${OUT_DIR}/GitPanel.its.sha256"
+echo "==> Checksum: ${OUT_DIR}/GitPanel.zip.sha256"

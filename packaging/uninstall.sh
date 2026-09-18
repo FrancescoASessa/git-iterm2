@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Remove the GitPanel iTerm2 toolbelt script that packaging/install.sh (or
-# iTerm2's own .its importer) installed.
+# iTerm2's own script importer) installed.
 #
 # Usage:
 #   packaging/uninstall.sh [-y|--yes]
@@ -30,8 +30,8 @@ ITERM_SCRIPTS_DIR="${HOME}/Library/Application Support/iTerm2/Scripts"
 #     normally lands (what install.sh documents and what Task 9's manual
 #     checklist should confirm).
 #   - GitPanel: iTerm2 also supports importing a script without AutoLaunch;
-#     nothing in this repo observed which one a real .its import actually
-#     uses (no import has been run against a real iTerm2 yet), so both are
+#     nothing in this repo observed which one a real import actually uses
+#     (no import has been run against a real iTerm2 yet), so both are
 #     checked rather than assuming.
 CANDIDATES=(
   "${ITERM_SCRIPTS_DIR}/AutoLaunch/GitPanel"

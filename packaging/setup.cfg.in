@@ -4,7 +4,7 @@ name=GitPanel
 version=@VERSION@
 [options]
 scripts=GitPanel/GitPanel.py
-install_requires=iterm2,aiohttp,pydantic
-python_requires = >=3.11
+install_requires=iterm2; aiohttp; pydantic
+python_requires = =@PYTHON_VERSION@
 [iterm2]
 environment = >=4

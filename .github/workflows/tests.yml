@@ -131,10 +131,10 @@ jobs:
       - uses: astral-sh/setup-uv@v10.1.0
 
       # No --skip-web-build: this is the job's only SPA build. It runs
-      # `npm ci && npm run build` internally (see packaging/build-its.sh),
+      # `npm ci && npm run build` internally (see packaging/build-archive.sh),
       # so this job never builds the SPA a second time.
-      - name: Build the .its archive
-        run: bash packaging/build-its.sh
+      - name: Build the archive
+        run: bash packaging/build-archive.sh
 
       - name: Install backend dependencies
         working-directory: backend
@@ -154,6 +154,6 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: GitPanel.its
-          path: dist/GitPanel.its*
+          name: GitPanel.zip
+          path: dist/GitPanel.zip*
           if-no-files-found: error

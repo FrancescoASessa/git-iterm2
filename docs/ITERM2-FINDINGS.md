@@ -10,6 +10,47 @@ Verified 2026-09-18 on the user's machine: iTerm2 3.7.1 (`defaults read
 /Applications/iTerm.app/Contents/Info.plist CFBundleShortVersionString` ->
 `3.7.1`), macOS.
 
+## Packaging: archive format, dependency separator, Python version pin
+
+Verified 2026-09-18, by a live install attempt against the same real iTerm2 (3.7.1) on the
+user's machine, and by reading iTerm2's own source (`iTermScriptImporter.m`,
+`iTermSetupCfgParser.m`) for the exact rules it applies. The archive our build produced at
+the time (`GitPanel.its`, comma-separated `install_requires`, `python_requires = >=3.11`)
+could not be installed; these three defects are why, and are now fixed
+(`packaging/build-archive.sh`, `packaging/setup.cfg.in`).
+
+- **`.its` requires a signed archive; `.zip` is the unsigned path.**
+  `iTermScriptImporter.m`'s `verifyAndUnwrapArchive:requireSignature:` calls
+  `[verifier smellsLikeSignedArchive:]` for any file imported with a `.its` extension. The
+  signed-archive format behind `.its` is gnachman's SignedArchive (a chunked tag/length
+  structure carrying a certificate and signature) — we have no Apple Developer ID
+  certificate to produce one, and a plain zip renamed to `.its` fails that check. On the
+  live install attempt, this produced iTerm2's dialog: "This script archive is corrupt and
+  cannot be installed." `reallyImportScriptFromURL` accepts the **`.zip`** extension for an
+  unsigned, user-initiated import instead. Confirmed empirically: the identical archive
+  bytes, renamed from `.its` to `.zip`, passed the check and reached Python provisioning.
+  → We now build and publish `GitPanel.zip` (`packaging/build-archive.sh`), never `.its`.
+
+- **`install_requires` must be separated with `;`, not `,`.** The second live-install
+  failure was `uv pip failed with status 2. error: Failed to parse: 'iterm2,aiohttp,pydantic'`
+  — the comma-separated value we generated was read back as a single requirement.
+  `iTermSetupCfgParser.m` accumulates the `install_requires` value and splits it with
+  `componentsSeparatedByString:@";"`; iTerm2's own setup.cfg writer joins dependencies with
+  `@"; "`. → `packaging/setup.cfg.in` now reads
+  `install_requires=iterm2; aiohttp; pydantic`.
+
+- **`python_requires` must be an exact pin starting with `=`.** `iTermSetupCfgParser.m`
+  discards it silently otherwise: `if (![expression hasPrefix:@"="]) { return; }`. Our
+  previous `python_requires = >=3.11` was therefore never read by iTerm2 at all — no error,
+  just silently ignored. iTerm2's own template writes `python_requires = =%@` (an exact
+  version). → `packaging/setup.cfg.in` now reads `python_requires = =@PYTHON_VERSION@`,
+  substituted by `packaging/build-archive.sh` (currently pinned to `3.12`, satisfying
+  `backend/pyproject.toml`'s `requires-python = ">=3.11"` floor).
+
+- **Python versions this iTerm2 build offers.** Verified from the app binary: **3.10, 3.11,
+  3.12, 3.13**. `python_requires`'s pin must name one of these or iTerm2 has nothing to
+  provision against.
+
 ## Raw output
 
 ```json

@@ -6,10 +6,16 @@
 #   packaging/install.sh [ARCHIVE_OR_URL]
 #
 # ARCHIVE_OR_URL is one of:
-#   - a path to a local GitPanel.its (e.g. produced by packaging/build-its.sh)
-#   - an https:// URL to a published GitPanel.its (plain http:// is refused;
+#   - a path to a local GitPanel.zip (e.g. produced by packaging/build-archive.sh)
+#   - an https:// URL to a published GitPanel.zip (plain http:// is refused;
 #     see the curl --proto flags below)
 #   - omitted, in which case $GITPANEL_RELEASE_URL is used
+#
+# Why .zip and not .its: iTerm2's importer (iTermScriptImporter.m) requires
+# anything with a `.its` extension to be a *signed* archive
+# (`smellsLikeSignedArchive:`) -- a format that needs an Apple Developer ID
+# certificate we do not have. `.zip` is the extension iTerm2 accepts for an
+# unsigned, user-initiated import. See docs/ITERM2-FINDINGS.md.
 #
 # In every case a sibling "<name>.sha256" (same path/URL with ".sha256"
 # appended) must exist and must match, or the install is refused -- see the
@@ -22,13 +28,13 @@
 # it's invoked from) and left there after this script exits. It must NOT
 # be deleted before iTerm2 finishes
 # importing it: `open -a iTerm "<archive>"` hands the file to iTerm2 and
-# returns immediately -- the unsigned-script approval dialog iTerm2 then
-# shows is asynchronous and can sit unanswered for as long as the user
-# takes, so anything that deletes the archive on this script's own exit
-# (e.g. a `mktemp -d` + `trap ... EXIT`) would race it out from under a
-# slow human. This script never writes into
-# ~/Library/Application Support/iTerm2 itself -- it hands the verified
-# archive to `open -a iTerm`, which runs iTerm2's own unsigned-script
+# returns immediately -- the auto-launch prompt iTerm2 then shows (asking
+# whether to launch the script automatically or manually) is asynchronous
+# and can sit unanswered for as long as the user takes, so anything that
+# deletes the archive on this script's own exit (e.g. a `mktemp -d` +
+# `trap ... EXIT`) would race it out from under a slow human. This script
+# never writes into ~/Library/Application Support/iTerm2 itself -- it hands
+# the verified archive to `open -a iTerm`, which runs iTerm2's own script
 # import flow (see the printed notice below).
 set -euo pipefail
 
@@ -81,9 +87,9 @@ fi
 
 SOURCE="${1:-${GITPANEL_RELEASE_URL:-}}"
 if [[ -z "${SOURCE}" ]]; then
-  fail "no archive given. Usage: packaging/install.sh <path-or-https-url-to-GitPanel.its>
+  fail "no archive given. Usage: packaging/install.sh <path-or-https-url-to-GitPanel.zip>
   (or set GITPANEL_RELEASE_URL). Build a local archive first with
-  packaging/build-its.sh if you don't have one."
+  packaging/build-archive.sh if you don't have one."
 fi
 
 download() {
@@ -112,8 +118,8 @@ if [[ "${SOURCE}" == https://* ]]; then
   esac
   mkdir -p "${CACHE_DIR}"
   log "==> Downloading ${SOURCE}"
-  ARCHIVE="${CACHE_DIR}/GitPanel.its"
-  SHA_FILE="${CACHE_DIR}/GitPanel.its.sha256"
+  ARCHIVE="${CACHE_DIR}/GitPanel.zip"
+  SHA_FILE="${CACHE_DIR}/GitPanel.zip.sha256"
   download "${SOURCE}" "${ARCHIVE}"
   download "${SOURCE}.sha256" "${SHA_FILE}"
   log "==> Saved to ${ARCHIVE}"
@@ -148,10 +154,11 @@ fi
 log "==> Checksum matches (${ACTUAL_SHA}) -- confirms the download is intact, not who published it"
 
 log ""
-log "==> GitPanel.its is UNSIGNED (no Apple Developer ID certificate)."
-log "    iTerm2 will show its own \"unsigned script\" import warning -- this"
-log "    is expected. You must approve it yourself; this installer cannot"
-log "    and does not bypass that prompt."
+log "==> GitPanel.zip is UNSIGNED (no Apple Developer ID certificate)."
+log "    iTerm2 will import it as an unsigned script and ask whether to"
+log "    launch it automatically or manually -- this is expected. You must"
+log "    answer that prompt yourself; this installer cannot and does not"
+log "    bypass it."
 log ""
 
 log "==> Handing the archive to iTerm2"
@@ -159,9 +166,10 @@ open -a iTerm "${ARCHIVE}" || fail "failed to open ${ARCHIVE} with iTerm ('open 
 
 log ""
 log "Next steps in iTerm2:"
-log "  1. Approve the unsigned-script import dialog iTerm2 shows."
-log "  2. If iTerm2 asks to restart the script (or you don't see it right"
-log "     away), quit and reopen iTerm2 once so AutoLaunch picks it up."
+log "  1. Answer iTerm2's prompt for whether to launch the script"
+log "     automatically (AutoLaunch) or manually."
+log "  2. If you don't see it registered right away, quit and reopen"
+log "     iTerm2 once so AutoLaunch picks it up."
 log "  3. Open View > Toolbelt > Git to show the panel."
 log ""
 log "To remove it later, run packaging/uninstall.sh."

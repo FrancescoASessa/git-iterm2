@@ -19,7 +19,7 @@ All notable changes to this project are documented in this file.
 - Local REST + WebSocket API (`/api/...`, `/ws`) served by an in-process aiohttp backend,
   bound to `127.0.0.1` on an OS-assigned port with a per-process token; OpenAPI schema and
   generated TypeScript client types.
-- Packaging as an unsigned iTerm2 `.its` script archive (`packaging/build-its.sh`), with
+- Packaging as an unsigned iTerm2 `.zip` script archive (`packaging/build-archive.sh`), with
   `packaging/install.sh` and `packaging/uninstall.sh` for scripted install/removal.
 - Logging to `~/Library/Logs/git-iterm2/` (rotated, level via `GIT_ITERM2_LOG_LEVEL`), with
   startup info and errors also shown in the iTerm2 Script Console. The panel's token is

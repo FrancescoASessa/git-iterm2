@@ -4,9 +4,9 @@ Automated tests cover `core/`, `git/`, `api/` and `web/`. Nothing in CI runs a r
 so `iterm/` — and anything about how the toolbelt webview actually behaves — only gets
 checked here, by a human, against a real iTerm2, before a release.
 
-Run this against a **freshly built** `GitPanel.its` (`bash packaging/build-its.sh`), imported
-the way an end user would (double-click, or `packaging/install.sh`), not against a copy
-already running from a previous install or from source.
+Run this against a **freshly built** `GitPanel.zip` (`bash packaging/build-archive.sh`),
+imported the way an end user would (double-click, or `packaging/install.sh`), not against a
+copy already running from a previous install or from source.
 
 For each item: do the step, then fill in the blank with what actually happened. Don't guess
 or fill in an expected answer — several of these are explicitly open questions that only
@@ -14,9 +14,9 @@ this checklist can settle.
 
 ## Install
 
-- [ ] Fresh install from a built `GitPanel.its` (no prior GitPanel install on this machine).
-      Double-click the archive, or run `packaging/install.sh dist/GitPanel.its`.
-      iTerm2 shows an unsigned-script warning — approve it.
+- [ ] Fresh install from a built `GitPanel.zip` (no prior GitPanel install on this machine).
+      Double-click the archive, or run `packaging/install.sh dist/GitPanel.zip`.
+      iTerm2 asks whether to launch the script automatically or manually — answer it.
       Result: ______________________________________________________
 - [ ] **Which directory did iTerm2 actually import the script into?** Check both:
       `~/Library/Application Support/iTerm2/Scripts/GitPanel` and

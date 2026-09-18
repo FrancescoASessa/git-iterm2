@@ -28,9 +28,9 @@ jobs:
       - uses: actions/checkout@v4
 
       # Fails fast, before setting up node or building anything, if the tag
-      # doesn't agree with the version build-its.sh will embed in the
+      # doesn't agree with the version build-archive.sh will embed in the
       # archive (it reads the same backend/pyproject.toml line). Otherwise a
-      # forgotten version bump ships a GitPanel.its that silently reports
+      # forgotten version bump ships a GitPanel.zip that silently reports
       # the wrong version to everyone who installs the release.
       - name: Check tag matches backend/pyproject.toml version
         run: |
@@ -69,10 +69,10 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       # No --skip-web-build: this is the job's only SPA build. It runs
-      # `npm ci && npm run build` internally (see packaging/build-its.sh),
+      # `npm ci && npm run build` internally (see packaging/build-archive.sh),
       # so this job never builds the SPA a second time.
-      - name: Build the .its archive
-        run: bash packaging/build-its.sh
+      - name: Build the archive
+        run: bash packaging/build-archive.sh
 
       # Pulls this release's notes from the matching CHANGELOG.md section
       # (Keep a Changelog style: "## [1.2.0]" or "## 1.2.0", with or
@@ -119,8 +119,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/GitPanel.its
-            dist/GitPanel.its.sha256
+            dist/GitPanel.zip
+            dist/GitPanel.zip.sha256
             packaging/install.sh
           body_path: ${{ steps.notes.outputs.notes_file }}
           fail_on_unmatched_files: true

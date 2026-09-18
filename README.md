@@ -18,16 +18,18 @@ remote operations.
 
 ## Install
 
-1. Download `GitPanel.its` from the [latest release](../../releases/latest).
-2. Double-click it, or run `packaging/install.sh <path-or-https-url-to-GitPanel.its>`.
-   Either way, iTerm2 opens its own script-import dialog.
-3. **The archive is unsigned** (there is no Apple Developer ID certificate for it). iTerm2
-   will show an "unsigned script" warning — this is expected; you must approve it yourself,
-   and nothing in this project bypasses that prompt. A matching `.sha256` file lets you
-   confirm the download wasn't corrupted in transit; it does not prove who published the
-   archive, since it comes from the same host as the archive itself.
-4. If iTerm2 asks to restart the script, or you don't see it registered right away, quit
-   and reopen iTerm2 once so AutoLaunch picks it up.
+1. Download `GitPanel.zip` from the [latest release](../../releases/latest).
+2. Double-click it, or run `packaging/install.sh <path-or-https-url-to-GitPanel.zip>`.
+   Either way, iTerm2 opens its own script-import flow.
+3. **The archive is unsigned** (there is no Apple Developer ID certificate for it; a `.zip`
+   is iTerm2's supported unsigned-import format — `.its` requires a signature we cannot
+   produce). iTerm2 will ask whether to launch the script automatically or manually — this
+   is expected; you must answer it yourself, and nothing in this project bypasses that
+   prompt. A matching `.sha256` file lets you confirm the download wasn't corrupted in
+   transit; it does not prove who published the archive, since it comes from the same host
+   as the archive itself.
+4. If you don't see it registered right away, quit and reopen iTerm2 once so AutoLaunch
+   picks it up.
 5. Open **View › Toolbelt › Git**.
 
 To remove it later, run `packaging/uninstall.sh`.
@@ -62,7 +64,7 @@ never written to this file.
 ## Development
 
 The panel is a Python backend (`backend/`, served locally via aiohttp) plus a Preact/
-TypeScript SPA (`web/`), packaged together into the `.its` archive (`packaging/`). See
+TypeScript SPA (`web/`), packaged together into the `.zip` archive (`packaging/`). See
 [`backend/README.md`](backend/README.md) and [`web/README.md`](web/README.md) for the dev
 commands for each layer, and [`CONTRIBUTING.md`](CONTRIBUTING.md) for the full layout and
 quality gates.

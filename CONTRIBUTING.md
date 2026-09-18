@@ -8,8 +8,8 @@ Three layers, each independently testable:
 backend/     Python (aiohttp). git service, active-repo controller, REST/WebSocket API,
              the only place that imports the `iterm2` package.
 web/         Preact + TypeScript SPA (Vite), served by the backend.
-packaging/   Assembles backend + built web/dist into the GitPanel.its iTerm2 script archive
-             (build-its.sh), plus install.sh / uninstall.sh for end users.
+packaging/   Assembles backend + built web/dist into the GitPanel.zip iTerm2 script archive
+             (build-archive.sh), plus install.sh / uninstall.sh for end users.
 ```
 
 Within `backend/src/git_iterm2/`: `iterm/` (iTerm2 API only) → `core/` (application layer,
@@ -62,10 +62,10 @@ publishes nothing unless it passes, so a release is gated by exactly these check
     npx playwright install --with-deps chromium
     npm run e2e
 
-**Packaging** (macOS) — the `.its` archive must build cleanly, and the archive it produces
+**Packaging** (macOS) — the `.zip` archive must build cleanly, and the archive it produces
 is then inspected by `backend/tests/test_packaging.py`:
 
-    bash packaging/build-its.sh
+    bash packaging/build-archive.sh
     cd backend && GIT_ITERM2_REQUIRE_PACKAGING_TEST=1 uv run pytest -q tests/test_packaging.py
 
 That test needs a prebuilt `web/dist` and skips without one (so an ordinary `pytest -q` run
@@ -78,7 +78,7 @@ human runs against a real iTerm2 before a release.
 
 ## Running the panel from source
 
-Without building the `.its` archive, against any repository:
+Without building the `.zip` archive, against any repository:
 
     cd web && npm install && npm run build
     cd ../backend && uv sync
