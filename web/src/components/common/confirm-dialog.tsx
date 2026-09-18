@@ -59,13 +59,15 @@ export function ConfirmDialog() {
             <button
               key={choice.id}
               ref={index === 0 ? firstButton : undefined}
-              class={choice.tone === 'danger' ? 'danger' : undefined}
+              class={`btn${choice.tone === 'danger' ? ' danger' : ''}`}
               onClick={() => resolveDialog(choice.id)}
             >
               {choice.label}
             </button>
           ))}
-          <button onClick={() => resolveDialog(null)}>Cancel</button>
+          <button class="btn" onClick={() => resolveDialog(null)}>
+            Cancel
+          </button>
         </div>
       </div>
     </div>

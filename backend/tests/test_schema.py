@@ -30,8 +30,21 @@ def test_openapi_contains_contract_models() -> None:
         "StashIndexBody",
         "DiffSplitBody",
         "AuthMessage",
+        "Theme",
+        "ThemePalette",
     ]:
         assert name in schemas, name
+
+
+def test_theme_ships_both_appearance_palettes() -> None:
+    """A macOS appearance switch fires no iTerm2 event, so the contract has to
+    carry both palettes and let CSS pick — and it must carry nothing the SPA
+    does not read (no background/foreground/selection, no ANSI array)."""
+    schemas = build_openapi()["components"]["schemas"]
+
+    assert set(schemas["Theme"]["properties"]) == {"light", "dark", "mono_family", "mono_size"}
+    assert set(schemas["Theme"]["required"]) == {"light", "dark", "mono_family", "mono_size"}
+    assert set(schemas["ThemePalette"]["properties"]) == {"accent", "added", "removed"}
 
 
 def test_openapi_file_is_current() -> None:

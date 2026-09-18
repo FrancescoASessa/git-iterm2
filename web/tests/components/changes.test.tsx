@@ -26,11 +26,17 @@ describe('ChangesPanel', () => {
   })
 
   it('groups files with counts', () => {
+    // The count is no longer baked into the title string ("Staged (1)"): it
+    // is a separate element so it can be aligned to the right edge of the
+    // header row. Assert both halves, and that they sit in the same row.
     render(<ChangesPanel />)
-    expect(screen.getByText('Conflicts (1)')).toBeInTheDocument()
-    expect(screen.getByText('Staged (1)')).toBeInTheDocument()
-    expect(screen.getByText('Changes (1)')).toBeInTheDocument()
-    expect(screen.getByText('Untracked (1)')).toBeInTheDocument()
+    for (const title of ['Conflicts', 'Staged', 'Changes', 'Untracked']) {
+      const header = screen.getByRole('button', { name: title })
+      expect(header).toHaveAttribute('aria-expanded', 'true')
+      const row = header.parentElement
+      expect(row).not.toBeNull()
+      expect(row?.querySelector('.count')).toHaveTextContent('1')
+    }
     expect(screen.getByText('changed.txt')).toBeInTheDocument()
   })
 

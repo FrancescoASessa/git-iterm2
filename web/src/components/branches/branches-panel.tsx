@@ -85,7 +85,11 @@ function NewBranchControl({ onCreate }: { onCreate: (name: string) => Promise<vo
   }
 
   if (!open) {
-    return <button onClick={() => setOpen(true)}>New branch</button>
+    return (
+      <button class="btn" onClick={() => setOpen(true)}>
+        New branch
+      </button>
+    )
   }
 
   return (
@@ -193,10 +197,11 @@ export function BranchesPanel() {
 
   return (
     <div class="branches">
-      <div class="row">
+      <div class="row filter-row">
         <input
           class="grow"
           aria-label="Filter branches"
+          placeholder="Filter branches"
           value={filter}
           onInput={(event) => {
             branchFilter.value = (event.target as HTMLInputElement).value

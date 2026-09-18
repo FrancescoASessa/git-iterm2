@@ -57,13 +57,37 @@ this checklist can settle.
       guessing a directory?
       Result: ______________________________________________________
 
-## Theme
+## Appearance
 
-- [ ] Panel colors match the active profile's background/foreground/selection/ANSI colors.
+The panel's surfaces are deliberately *not* the profile's colors (see §5 of the design
+spec): they are neutral and follow the **system** appearance. Only the accent (branch and
+ref labels, primary button, focus ring) and the diff green/red come from the profile.
+
+- [ ] In a dark terminal, is the panel dark — and light in a light one? Check with a
+      profile that has "Use Separate Colors for Light and Dark Mode" **on** and one with
+      it **off**.
       Result: ______________________________________________________
-- [ ] Switch the active session to a different profile (with different colors). Does the
-      panel's theme update, and after which action (immediately, or only after the next
+- [ ] Switch macOS System Settings ▸ Appearance between Light and Dark while the panel is
+      open, without touching iTerm2. Does the panel follow immediately (no focus change,
+      no reopen)?
+      Result: ______________________________________________________
+- [ ] Do the branch label and ref chips use the profile's blue (ANSI 4), and do diff
+      added/removed lines use the profile's green/red as a tint rather than a solid
+      terminal background?
+      Result: ______________________________________________________
+- [ ] Is UI text in the system font and only repository text (branch names, file paths,
+      commit hashes, `stash@{n}`, diff content) in the profile's monospace font, at the
+      profile's size?
+      Result: ______________________________________________________
+- [ ] Switch the active session to a profile with different colors and a different font.
+      Does the panel update, and after which action (immediately, or only after the next
       focus change)?
+      Result: ______________________________________________________
+- [ ] Narrow the toolbelt to its minimum and widen it. Does every control stay reachable,
+      with no horizontal scrollbar, in Changes / Branches / Graph / Stash?
+      Result: ______________________________________________________
+- [ ] Tab through the panel with the keyboard. Is the focus ring visible on rows, tabs and
+      buttons?
       Result: ______________________________________________________
 
 ## Diff

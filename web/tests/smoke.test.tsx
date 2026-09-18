@@ -36,7 +36,17 @@ describe('app shell', () => {
   })
 
   it('exposes the fallback theme and the snapshot type', () => {
-    expect(FALLBACK_THEME.ansi).toHaveLength(16)
+    // The fallback carries one palette per appearance and nothing else: no
+    // surface colours and no ANSI array, because the panel draws its own
+    // surfaces from neutral CSS tokens.
+    expect(Object.keys(FALLBACK_THEME).sort()).toEqual([
+      'dark',
+      'light',
+      'mono_family',
+      'mono_size',
+    ])
+    expect(Object.keys(FALLBACK_THEME.light).sort()).toEqual(['accent', 'added', 'removed'])
+    expect(FALLBACK_THEME.light.accent).not.toBe(FALLBACK_THEME.dark.accent)
     const snapshot: RepoSnapshot = {
       root: '/r',
       head: { branch: 'main', detached_sha: null },

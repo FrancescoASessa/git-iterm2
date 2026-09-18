@@ -66,9 +66,9 @@ export function DiffView({ source, revision }: { source: DiffSource; revision?: 
   return (
     <div class="diff">
       <div class="row diff-toolbar">
-        <span class="grow muted">{diff.path}</span>
+        <span class="grow path muted">{diff.path}</span>
         {source.kind === 'worktree' && (
-          <button disabled={pending} onClick={() => run(openSplit)}>
+          <button class="btn" disabled={pending} onClick={() => run(openSplit)}>
             Open in split
           </button>
         )}

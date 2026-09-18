@@ -22,10 +22,16 @@ export function FileGroup({
     <section>
       <div class="row group-header">
         <button class="grow section-title" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {`${title} (${count})`}
+          {title}
         </button>
+        <span class="count">{count}</span>
         {action && (
-          <button disabled={pending} aria-label={action.ariaLabel} onClick={() => run(action.run)}>
+          <button
+            class="btn"
+            disabled={pending}
+            aria-label={action.ariaLabel}
+            onClick={() => run(action.run)}
+          >
             {action.label}
           </button>
         )}

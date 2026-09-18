@@ -983,44 +983,54 @@
         "type": "object"
       },
       "Theme": {
+        "description": "Both appearance palettes, plus the profile's monospace font.\n\nBoth palettes always travel, because a macOS light/dark switch fires no\niTerm2 event: with a single palette the panel would keep the stale one\nuntil the next focus change. When the profile does not use separate\nlight and dark colours the two palettes are identical.",
         "properties": {
-          "ansi": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Ansi",
-            "type": "array"
+          "dark": {
+            "$ref": "#/components/schemas/ThemePalette"
           },
-          "background": {
-            "title": "Background",
+          "light": {
+            "$ref": "#/components/schemas/ThemePalette"
+          },
+          "mono_family": {
+            "title": "Mono Family",
             "type": "string"
           },
-          "font_family": {
-            "title": "Font Family",
-            "type": "string"
-          },
-          "font_size": {
-            "title": "Font Size",
+          "mono_size": {
+            "title": "Mono Size",
             "type": "number"
-          },
-          "foreground": {
-            "title": "Foreground",
+          }
+        },
+        "required": [
+          "light",
+          "dark",
+          "mono_family",
+          "mono_size"
+        ],
+        "title": "Theme",
+        "type": "object"
+      },
+      "ThemePalette": {
+        "description": "The profile colours the panel honours, for one system appearance.\n\nThe panel's own surfaces (backgrounds, separators, secondary text) are\nneutral and resolved in CSS from the system appearance, so the profile\ncontributes only the colours that carry meaning: the user's diff green\nand red, and the accent used for branch and ref labels.",
+        "properties": {
+          "accent": {
+            "title": "Accent",
             "type": "string"
           },
-          "selection": {
-            "title": "Selection",
+          "added": {
+            "title": "Added",
+            "type": "string"
+          },
+          "removed": {
+            "title": "Removed",
             "type": "string"
           }
         },
         "required": [
-          "background",
-          "foreground",
-          "selection",
-          "ansi",
-          "font_family",
-          "font_size"
+          "accent",
+          "added",
+          "removed"
         ],
-        "title": "Theme",
+        "title": "ThemePalette",
         "type": "object"
       },
       "Upstream": {

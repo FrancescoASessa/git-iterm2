@@ -51,17 +51,17 @@ function BranchRow({
   return (
     <div class="row branch-row">
       <button
-        class="grow"
+        class="grow branch"
         aria-current={branch.is_current ? 'true' : undefined}
         disabled={pending}
         onClick={() => run(() => onCheckout(branch.name))}
       >
         {branch.name}
       </button>
-      {branch.ahead !== null && <span>↑{branch.ahead}</span>}
-      {branch.behind !== null && <span>↓{branch.behind}</span>}
+      {branch.ahead !== null && <span class="pill">↑{branch.ahead}</span>}
+      {branch.behind !== null && <span class="pill">↓{branch.behind}</span>}
       {branch.last_commit_subject !== null && (
-        <span class="muted">{branch.last_commit_subject}</span>
+        <span class="subject">{branch.last_commit_subject}</span>
       )}
       {actions !== undefined && editing !== null && (
         <input
@@ -78,30 +78,40 @@ function BranchRow({
         />
       )}
       {actions !== undefined && editing === null && (
-        <>
+        <div class="row-actions">
+          {/* Glyphs, not words: three text buttons per row plus the branch
+              name and the last commit subject wrapped onto a second line at
+              240px. The accessible name (and the tooltip) still spells the
+              action out, so nothing is lost to a screen reader or a pointer
+              that hovers. */}
           <button
+            class="icon-btn"
             disabled={pending}
+            title={`Rename ${branch.name}`}
             aria-label={`Rename ${branch.name}`}
             onClick={() => startEditing('rename')}
           >
-            Rename
+            ✎
           </button>
           <button
+            class="icon-btn"
             disabled={pending}
+            title={`Set upstream for ${branch.name}`}
             aria-label={`Set upstream for ${branch.name}`}
             onClick={() => startEditing('upstream')}
           >
-            Upstream
+            ⇅
           </button>
           <button
-            class="danger"
+            class="icon-btn danger"
             disabled={pending}
+            title={`Delete ${branch.name}`}
             aria-label={`Delete ${branch.name}`}
             onClick={() => run(() => actions.onDelete(branch.name))}
           >
-            Delete
+            ✕
           </button>
-        </>
+        </div>
       )}
     </div>
   )
@@ -123,7 +133,8 @@ export function BranchList({
   return (
     <section>
       <div class="row group-header">
-        <span class="grow section-title">{`${title} (${branches.length})`}</span>
+        <span class="grow section-title">{title}</span>
+        <span class="count">{branches.length}</span>
       </div>
       {branches.map((branch) => (
         <BranchRow

@@ -375,20 +375,39 @@ export interface components {
              */
             message: string;
         };
-        /** Theme */
+        /**
+         * Theme
+         * @description Both appearance palettes, plus the profile's monospace font.
+         *
+         *     Both palettes always travel, because a macOS light/dark switch fires no
+         *     iTerm2 event: with a single palette the panel would keep the stale one
+         *     until the next focus change. When the profile does not use separate
+         *     light and dark colours the two palettes are identical.
+         */
         Theme: {
-            /** Ansi */
-            ansi: string[];
-            /** Background */
-            background: string;
-            /** Font Family */
-            font_family: string;
-            /** Font Size */
-            font_size: number;
-            /** Foreground */
-            foreground: string;
-            /** Selection */
-            selection: string;
+            dark: components["schemas"]["ThemePalette"];
+            light: components["schemas"]["ThemePalette"];
+            /** Mono Family */
+            mono_family: string;
+            /** Mono Size */
+            mono_size: number;
+        };
+        /**
+         * ThemePalette
+         * @description The profile colours the panel honours, for one system appearance.
+         *
+         *     The panel's own surfaces (backgrounds, separators, secondary text) are
+         *     neutral and resolved in CSS from the system appearance, so the profile
+         *     contributes only the colours that carry meaning: the user's diff green
+         *     and red, and the accent used for branch and ref labels.
+         */
+        ThemePalette: {
+            /** Accent */
+            accent: string;
+            /** Added */
+            added: string;
+            /** Removed */
+            removed: string;
         };
         /** Upstream */
         Upstream: {

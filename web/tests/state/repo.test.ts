@@ -50,12 +50,48 @@ describe('repo state', () => {
     expect(hasRepo.value).toBe(true)
   })
 
-  it('applies the theme from the snapshot', () => {
+  it('publishes both appearance palettes from the snapshot', () => {
+    // Both must land on every snapshot: a macOS appearance switch fires no
+    // iTerm2 event, so the stylesheet has to be able to pick the other one
+    // at any moment without another round trip.
     const root = document.documentElement
-    applySnapshot(makeSnapshot({ theme: { ...FALLBACK_THEME, background: '#123456' } }))
-    expect(root.style.getPropertyValue('--bg')).toBe('#123456')
+    applySnapshot(
+      makeSnapshot({
+        theme: {
+          light: { accent: '#0000ff', added: '#008000', removed: '#800000' },
+          dark: { accent: '#88aaff', added: '#66dd88', removed: '#ff8888' },
+          mono_family: 'MesloLGS NF',
+          mono_size: 13,
+        },
+      }),
+    )
 
+    expect(root.style.getPropertyValue('--accent-light')).toBe('#0000ff')
+    expect(root.style.getPropertyValue('--accent-dark')).toBe('#88aaff')
+    expect(root.style.getPropertyValue('--added-light')).toBe('#008000')
+    expect(root.style.getPropertyValue('--removed-dark')).toBe('#ff8888')
+    expect(root.style.getPropertyValue('--font-mono')).toContain('"MesloLGS NF"')
+    expect(root.style.getPropertyValue('--mono-size')).toBe('13px')
+  })
+
+  it('never lets the profile set the panel surface', () => {
+    // The old model wrote the profile's own background/foreground/selection
+    // and all 16 ANSI colours onto the root, which is exactly why the panel
+    // looked like a colourised `git status`. Surfaces are now neutral tokens
+    // owned by the stylesheet; nothing may write them from a snapshot.
+    const root = document.documentElement
+    applySnapshot(makeSnapshot({ theme: FALLBACK_THEME }))
+
+    for (const property of ['--bg', '--fg', '--selection', '--surface', '--text', '--ansi-2']) {
+      expect(root.style.getPropertyValue(property)).toBe('')
+    }
+  })
+
+  it('falls back to the built-in palette without a theme', () => {
+    const root = document.documentElement
     applySnapshot(makeSnapshot({ theme: null }))
-    expect(root.style.getPropertyValue('--bg')).toBe(FALLBACK_THEME.background)
+
+    expect(root.style.getPropertyValue('--accent-light')).toBe(FALLBACK_THEME.light.accent)
+    expect(root.style.getPropertyValue('--accent-dark')).toBe(FALLBACK_THEME.dark.accent)
   })
 })

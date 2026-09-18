@@ -47,10 +47,10 @@ export function RepoStateBanner() {
   return (
     <Banner>
       <span class="grow">{LABELS[state] ?? state}</span>
-      <button disabled={pending !== null} onClick={() => void run('continue')}>
+      <button class="btn" disabled={pending !== null} onClick={() => void run('continue')}>
         Continue
       </button>
-      <button disabled={pending !== null} onClick={() => void run('abort')}>
+      <button class="btn" disabled={pending !== null} onClick={() => void run('abort')}>
         Abort
       </button>
     </Banner>

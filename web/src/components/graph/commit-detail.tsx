@@ -34,10 +34,11 @@ export function CommitDetailView({ sha }: { sha: string }) {
     <div class="diff">
       <div class="row diff-toolbar">
         <span class="grow">
-          <span class="muted">{shortSha}</span>
+          <span class="sha muted">{shortSha}</span>{' '}
           {detail !== null && <span>{detail.subject}</span>}
         </span>
         <button
+          class="btn"
           aria-label="Close commit"
           onClick={() => {
             selectedCommit.value = null
@@ -59,7 +60,7 @@ export function CommitDetailView({ sha }: { sha: string }) {
             {detail.files.map((file) => (
               <button key={file.path} class="row file-row" onClick={() => setPath(file.path)}>
                 <span class={`status status-${file.status}`}>{file.status}</span>
-                <span class="path">{file.path}</span>
+                <span class="path grow">{file.path}</span>
               </button>
             ))}
           </div>

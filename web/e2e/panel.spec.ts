@@ -16,8 +16,15 @@ test('removes the token from the address bar', async ({ panel }) => {
 })
 
 test('stages a file and commits it', async ({ panel }) => {
+  // The group header is a title button plus a right-aligned `.count`, not a
+  // single "Staged (1)" string, so the count is asserted on its own element.
+  // `exact` matters: "Unstage all staged" also contains "Staged".
+  const stagedGroup = panel.getByRole('button', { name: 'Staged', exact: true })
   await panel.getByRole('button', { name: 'Stage README.md' }).click()
-  await expect(panel.getByText('Staged (1)')).toBeVisible()
+  await expect(stagedGroup).toBeVisible()
+  await expect(panel.locator('.group-header', { has: stagedGroup }).locator('.count')).toHaveText(
+    '1',
+  )
 
   await panel.getByLabel('Commit message').fill('e2e commit')
   await panel.getByRole('button', { name: 'Commit' }).click()
@@ -26,7 +33,7 @@ test('stages a file and commits it', async ({ panel }) => {
   // `await expect(...).toBeHidden(...).catch(() => undefined)` line is a no-op
   // assertion — a failed toBeHidden is swallowed by the .catch — so it never
   // proves the commit happened. Assert on the real state instead.
-  await expect(panel.getByText('Staged (1)')).toBeHidden()
+  await expect(stagedGroup).toBeHidden()
 
   await panel.getByRole('tab', { name: 'Graph' }).click()
   await expect(panel.getByText('e2e commit')).toBeVisible()
@@ -107,23 +114,77 @@ test('stashes and restores the working tree', async ({ panel }) => {
   await expect(panel.getByText('No stashes')).toBeVisible()
 })
 
-test('keeps the branch row actions reachable at 240px', async ({ panel }) => {
-  // Read-only and placed last on purpose: it only resizes and reads, so it
-  // leaves the shared repo exactly as the stash spec left it and does not
-  // disturb the documented ordering above.
-  await panel.setViewportSize({ width: 240, height: 600 })
-  try {
-    await panel.getByRole('tab', { name: 'Branches' }).click()
-    const del = panel.getByRole('button', { name: 'Delete main' })
-    await expect(del).toBeVisible()
+// 240px and 320px are the two widths the toolbelt is actually used at, and
+// they are where this layout breaks: every control has to stay inside the
+// panel, with no horizontal page scroll. These specs are read-only and placed
+// last on purpose — they only resize and read, so they leave the shared repo
+// exactly as the stash spec left it and do not disturb the ordering above.
+for (const width of [240, 320]) {
+  test(`keeps every control reachable at ${width}px`, async ({ panel }) => {
+    await panel.setViewportSize({ width, height: 600 })
+    try {
+      const noOverflow = async (): Promise<void> => {
+        expect(
+          await panel.evaluate(() => document.documentElement.scrollWidth),
+        ).toBeLessThanOrEqual(width)
+      }
 
-    expect(await panel.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
-      240,
-    )
-    await expect(del).toBeInViewport()
-  } finally {
-    await panel.setViewportSize({ width: 1280, height: 720 })
-  }
+      // Header: the segmented remote group must not be pushed out by a long
+      // head label, and all four tabs stay on one segmented control.
+      await expect(panel.getByRole('button', { name: 'Push' })).toBeInViewport()
+      for (const name of ['Changes', 'Branches', 'Graph', 'Stash']) {
+        await expect(panel.getByRole('tab', { name })).toBeInViewport()
+      }
+      await noOverflow()
+
+      await panel.getByRole('tab', { name: 'Changes' }).click()
+      await expect(panel.getByRole('button', { name: 'Commit' })).toBeInViewport()
+      await expect(panel.getByRole('button', { name: 'Stage untracked.txt' })).toBeInViewport()
+      await noOverflow()
+
+      await panel.getByRole('tab', { name: 'Branches' }).click()
+      await expect(panel.getByRole('button', { name: 'Delete main' })).toBeInViewport()
+      await expect(panel.getByRole('button', { name: 'New branch' })).toBeInViewport()
+      await noOverflow()
+
+      await panel.getByRole('tab', { name: 'Graph' }).click()
+      // The list is virtualised, so assert on the first row rather than a
+      // particular subject that may be scrolled out of the window.
+      const row = panel.locator('.graph-row').first()
+      await expect(row).toBeInViewport()
+      expect((await row.boundingBox())?.width ?? width + 1).toBeLessThanOrEqual(width)
+      await noOverflow()
+
+      await panel.getByRole('tab', { name: 'Stash' }).click()
+      await expect(panel.getByRole('button', { name: 'Stash', exact: true })).toBeInViewport()
+      await noOverflow()
+    } finally {
+      await panel.setViewportSize({ width: 1280, height: 720 })
+    }
+  })
+}
+
+test('renders a diff with surface tints rather than ANSI backgrounds', async ({ panel }) => {
+  // Read-only, and the last of the appearance specs: it asserts the rendered
+  // result of the colour model, which no unit test can reach — a diff line's
+  // tint is mixed from the panel's surface, so it must differ from the page
+  // background without being an opaque terminal colour.
+  await panel.getByRole('tab', { name: 'Changes' }).click()
+  await panel.getByText('untracked.txt').click()
+
+  const added = panel.locator('.diff-line.diff-add').first()
+  await expect(added).toBeVisible()
+
+  const colors = await added.evaluate((node) => ({
+    line: getComputedStyle(node).backgroundColor,
+    body: getComputedStyle(document.body).backgroundColor,
+    mono: getComputedStyle(node).fontFamily,
+    ui: getComputedStyle(document.body).fontFamily,
+  }))
+  expect(colors.line).not.toBe(colors.body)
+  expect(colors.line).not.toBe('rgba(0, 0, 0, 0)')
+  // Diff content stays monospace; the surrounding UI does not.
+  expect(colors.mono).not.toBe(colors.ui)
 })
 
 test('serves the built assets from the backend', async ({ panel }) => {

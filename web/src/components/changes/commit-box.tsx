@@ -55,7 +55,7 @@ export function CommitBox() {
           />{' '}
           Amend
         </label>
-        <button disabled={!canCommit} onClick={() => void submit()}>
+        <button class="btn btn-primary" disabled={!canCommit} onClick={() => void submit()}>
           Commit
         </button>
       </div>

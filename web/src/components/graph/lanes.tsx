@@ -1,14 +1,20 @@
 import type { GraphCommit } from '../../api/types'
 
 export const LANE_WIDTH = 12
-export const ROW_HEIGHT = 22
+/** Must equal the stylesheet's `--row-height`: the virtual list places rows by
+ * multiplying this, so a row that renders taller drifts the whole list.
+ * `tests/components/appearance.test.tsx` asserts the two agree. */
+export const ROW_HEIGHT = 26
 
 export function laneX(lane: number): number {
   return 8 + lane * LANE_WIDTH
 }
 
+/** Lanes are decoration, not meaning: they come from the panel's own six-colour
+ * token set (which has a contrast guarantee on our surfaces in both
+ * appearances) rather than from the profile's ANSI palette, which had none. */
 function laneColor(lane: number): string {
-  return `var(--ansi-${1 + (lane % 6)})`
+  return `var(--lane-${lane % 6})`
 }
 
 function edgePath(from: number, to: number, half: 'top' | 'bottom'): string {

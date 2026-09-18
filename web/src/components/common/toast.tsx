@@ -8,8 +8,12 @@ function ToastRow({ toast }: { toast: Toast }) {
     <div class={`toast toast-${toast.tone}`} role="alert">
       <div class="row">
         <span class="grow">{toast.message}</span>
-        {toast.detail !== undefined && <button onClick={() => setOpen(!open)}>Details</button>}
-        <button aria-label="Dismiss" onClick={() => dismissToast(toast.id)}>
+        {toast.detail !== undefined && (
+          <button class="btn" onClick={() => setOpen(!open)}>
+            Details
+          </button>
+        )}
+        <button class="icon-btn" aria-label="Dismiss" onClick={() => dismissToast(toast.id)}>
           ✕
         </button>
       </div>

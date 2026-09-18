@@ -47,18 +47,28 @@ export function FileRow(props: FileRowProps) {
         {label}
       </button>
       {handleStage && (
-        <button disabled={pending} aria-label={`Stage ${props.path}`} onClick={handleStage}>
+        <button
+          class="icon-btn"
+          disabled={pending}
+          aria-label={`Stage ${props.path}`}
+          onClick={handleStage}
+        >
           +
         </button>
       )}
       {handleUnstage && (
-        <button disabled={pending} aria-label={`Unstage ${props.path}`} onClick={handleUnstage}>
+        <button
+          class="icon-btn"
+          disabled={pending}
+          aria-label={`Unstage ${props.path}`}
+          onClick={handleUnstage}
+        >
           −
         </button>
       )}
       {handleDiscard && (
         <button
-          class="danger"
+          class="icon-btn danger"
           disabled={pending}
           aria-label={`Discard ${props.path}`}
           onClick={handleDiscard}

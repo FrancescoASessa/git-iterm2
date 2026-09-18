@@ -37,26 +37,30 @@ export function Header() {
       {upstream !== null && (
         <>
           <span
+            class="pill"
             aria-label={`${upstream.ahead} commit${upstream.ahead === 1 ? '' : 's'} ahead of ${upstream.name}`}
           >
             ↑{upstream.ahead}
           </span>
           <span
+            class="pill"
             aria-label={`${upstream.behind} commit${upstream.behind === 1 ? '' : 's'} behind ${upstream.name}`}
           >
             ↓{upstream.behind}
           </span>
         </>
       )}
-      <span class="grow muted">
+      <span class="op-progress">
         {current !== undefined &&
           `${current.phase}${current.pct === null ? '' : ` ${current.pct}%`}`}
       </span>
-      {OPS.map((op) => (
-        <button key={op.id} disabled={disabled} onClick={() => void start(op.id)}>
-          {op.label}
-        </button>
-      ))}
+      <div class="btn-group ops">
+        {OPS.map((op) => (
+          <button key={op.id} class="btn" disabled={disabled} onClick={() => void start(op.id)}>
+            {op.label}
+          </button>
+        ))}
+      </div>
     </header>
   )
 }

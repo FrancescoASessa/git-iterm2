@@ -19,7 +19,16 @@ function relativeTime(unixSeconds: number): string {
   return new Date(unixSeconds * 1000).toISOString().slice(0, 10)
 }
 
+// A commit can carry HEAD plus several branch and tag refs. Four chips ate
+// the whole row and pushed the subject out of the panel; three ellipsised to
+// unreadable stubs ("H…", "m…") at 240px. One readable chip plus a count of
+// the rest is the most a narrow toolbelt can show honestly — the full list is
+// the chip's tooltip, and the commit detail spells it out.
+const MAX_REFS = 1
+
 function GraphRow({ commit, maxLane }: { commit: GraphCommit; maxLane: number }) {
+  const refs = commit.refs.slice(0, MAX_REFS)
+  const hidden = commit.refs.length - refs.length
   return (
     <button
       class="row graph-row"
@@ -29,13 +38,18 @@ function GraphRow({ commit, maxLane }: { commit: GraphCommit; maxLane: number })
     >
       <Lanes commit={commit} maxLane={maxLane} />
       <span class="sha muted">{commit.sha.slice(0, 7)}</span>
-      {commit.refs.map((ref) => (
+      {refs.map((ref) => (
         <span class="ref" key={ref}>
           {ref}
         </span>
       ))}
+      {hidden > 0 && (
+        <span class="ref ref-more" title={commit.refs.join(', ')}>
+          +{hidden}
+        </span>
+      )}
       <span class="grow">{commit.subject}</span>
-      <span class="muted">{relativeTime(commit.timestamp)}</span>
+      <span class="time count">{relativeTime(commit.timestamp)}</span>
     </button>
   )
 }

@@ -41,8 +41,15 @@ describe('GraphPanel', () => {
     render(<GraphPanel />)
 
     expect(await screen.findByText('commit 1')).toBeInTheDocument()
+    // A 240px row cannot hold several ref chips and still show the subject,
+    // so the row shows the first ref and counts the rest; the overflow chip
+    // carries the full list as its tooltip so nothing is actually lost.
     expect(screen.getByText('HEAD')).toBeInTheDocument()
-    expect(screen.getByText('main')).toBeInTheDocument()
+    expect(screen.queryByText('main')).not.toBeInTheDocument()
+    const overflow = screen.getByText('+1')
+    expect(overflow).toHaveClass('ref-more')
+    expect(overflow).toHaveAttribute('title', 'HEAD, main')
+    expect(screen.getByText('commit 1')).toBeInTheDocument()
 
     await userEvent.click(screen.getByText('commit 2'))
     expect(selectedCommit.value).toBe(page1.commits[1]?.sha)

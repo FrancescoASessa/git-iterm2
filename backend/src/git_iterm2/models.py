@@ -29,13 +29,33 @@ class Upstream(ApiModel):
     behind: int
 
 
+class ThemePalette(ApiModel):
+    """The profile colours the panel honours, for one system appearance.
+
+    The panel's own surfaces (backgrounds, separators, secondary text) are
+    neutral and resolved in CSS from the system appearance, so the profile
+    contributes only the colours that carry meaning: the user's diff green
+    and red, and the accent used for branch and ref labels.
+    """
+
+    accent: str
+    added: str
+    removed: str
+
+
 class Theme(ApiModel):
-    background: str
-    foreground: str
-    selection: str
-    ansi: list[str]
-    font_family: str
-    font_size: float
+    """Both appearance palettes, plus the profile's monospace font.
+
+    Both palettes always travel, because a macOS light/dark switch fires no
+    iTerm2 event: with a single palette the panel would keep the stale one
+    until the next focus change. When the profile does not use separate
+    light and dark colours the two palettes are identical.
+    """
+
+    light: ThemePalette
+    dark: ThemePalette
+    mono_family: str
+    mono_size: float
 
 
 class RepoSnapshot(ApiModel):

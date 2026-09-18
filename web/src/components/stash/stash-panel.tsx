@@ -73,31 +73,33 @@ function StashRow({
 
   return (
     <div class="row stash-row">
-      <span class="muted">{`stash@{${entry.index}}`}</span>
+      <span class="stash-ref muted">{`stash@{${entry.index}}`}</span>
       <span class="grow">{entry.message}</span>
-      <span class="muted">{relativeTime(entry.timestamp)}</span>
-      <button
-        disabled={pending}
-        aria-label={`Apply stash@{${entry.index}}`}
-        onClick={() => run(() => onAction(entry.index, 'apply'))}
-      >
-        Apply
-      </button>
-      <button
-        disabled={pending}
-        aria-label={`Pop stash@{${entry.index}}`}
-        onClick={() => run(() => onAction(entry.index, 'pop'))}
-      >
-        Pop
-      </button>
-      <button
-        class="danger"
-        disabled={pending}
-        aria-label={`Drop stash@{${entry.index}}`}
-        onClick={() => run(() => onAction(entry.index, 'drop'))}
-      >
-        Drop
-      </button>
+      <span class="count">{relativeTime(entry.timestamp)}</span>
+      <div class="row-actions">
+        <button
+          disabled={pending}
+          aria-label={`Apply stash@{${entry.index}}`}
+          onClick={() => run(() => onAction(entry.index, 'apply'))}
+        >
+          Apply
+        </button>
+        <button
+          disabled={pending}
+          aria-label={`Pop stash@{${entry.index}}`}
+          onClick={() => run(() => onAction(entry.index, 'pop'))}
+        >
+          Pop
+        </button>
+        <button
+          class="danger"
+          disabled={pending}
+          aria-label={`Drop stash@{${entry.index}}`}
+          onClick={() => run(() => onAction(entry.index, 'drop'))}
+        >
+          Drop
+        </button>
+      </div>
     </div>
   )
 }
@@ -121,10 +123,11 @@ function StashPushControl({
   }
 
   return (
-    <div class="row">
+    <div class="row push-row">
       <input
         class="grow"
         aria-label="Stash message"
+        placeholder="Stash message"
         value={message}
         disabled={pending}
         onInput={(event) => setMessage((event.target as HTMLInputElement).value)}
@@ -132,7 +135,7 @@ function StashPushControl({
           if (event.key === 'Enter') submit()
         }}
       />
-      <label class="row">
+      <label>
         <input
           type="checkbox"
           aria-label="Include untracked"
@@ -142,7 +145,7 @@ function StashPushControl({
         />
         Include untracked
       </label>
-      <button disabled={pending} onClick={submit}>
+      <button class="btn" disabled={pending} onClick={submit}>
         Stash
       </button>
     </div>

@@ -9,7 +9,7 @@ from git_iterm2.core.fingerprint import Fingerprint, repo_fingerprint
 from git_iterm2.errors import ErrorCode, GitError
 from git_iterm2.git.changes import stage
 from git_iterm2.git.repo import RepoPaths
-from git_iterm2.models import OpDoneMessage, SnapshotMessage, Theme
+from git_iterm2.models import OpDoneMessage, SnapshotMessage, Theme, ThemePalette
 from tests.helpers import Recorder, commit_file, write
 
 
@@ -92,14 +92,8 @@ async def test_action_without_repo_raises() -> None:
 async def test_set_theme_is_included_in_snapshot(repo: Path) -> None:
     controller = RepoController()
     await controller.set_active_path(repo)
-    theme = Theme(
-        background="#000000",
-        foreground="#ffffff",
-        selection="#333333",
-        ansi=["#000000"] * 16,
-        font_family="Menlo",
-        font_size=12.0,
-    )
+    palette = ThemePalette(accent="#0a69da", added="#1a7f37", removed="#cf222e")
+    theme = Theme(light=palette, dark=palette, mono_family="Menlo", mono_size=12.0)
     await controller.set_theme(theme)
     assert controller.snapshot is not None
     assert controller.snapshot.theme == theme

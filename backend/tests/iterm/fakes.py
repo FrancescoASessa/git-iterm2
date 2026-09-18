@@ -35,16 +35,37 @@ class FakeColor:
 
 @dataclass
 class FakeProfile:
+    """Mirrors `iterm2.Profile`'s colour accessors, light/dark pairs included.
+
+    The real class exposes a legacy getter per colour (`ansi_2_color`) plus
+    an appearance variant (`ansi_2_color_light` / `ansi_2_color_dark`), and
+    every one of them returns `None` when the profile has no value under
+    that key — `Profile.get_color_with_key` swallows the `KeyError`. This
+    fake reproduces that: an `ansi*` table left as `None` stands for a
+    profile that has no colour under those keys at all.
+    """
+
     background_color: FakeColor
     foreground_color: FakeColor
     selection_color: FakeColor
-    ansi: list[FakeColor]
+    ansi: list[FakeColor] | None
     normal_font: str
     name: str = "Default"
+    use_separate_colors_for_light_and_dark_mode: bool = False
+    ansi_light: list[FakeColor] | None = None
+    ansi_dark: list[FakeColor] | None = None
 
     def __getattr__(self, item: str) -> Any:
-        if item.startswith("ansi_") and item.endswith("_color"):
-            return self.ansi[int(item.removeprefix("ansi_").removesuffix("_color"))]
+        if not item.startswith("ansi_"):
+            raise AttributeError(item)
+        for suffix, table in (("_light", "ansi_light"), ("_dark", "ansi_dark"), ("", "ansi")):
+            if not item.endswith(f"_color{suffix}"):
+                continue
+            colors = self.__dict__.get(table)
+            if colors is None:
+                return None
+            index = item.removeprefix("ansi_").removesuffix(f"_color{suffix}")
+            return colors[int(index)]
         raise AttributeError(item)
 
 
