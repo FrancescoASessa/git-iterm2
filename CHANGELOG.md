@@ -21,3 +21,6 @@ All notable changes to this project are documented in this file.
   generated TypeScript client types.
 - Packaging as an unsigned iTerm2 `.its` script archive (`packaging/build-its.sh`), with
   `packaging/install.sh` and `packaging/uninstall.sh` for scripted install/removal.
+- Logging to `~/Library/Logs/git-iterm2/` (rotated, level via `GIT_ITERM2_LOG_LEVEL`), with
+  startup info and errors also shown in the iTerm2 Script Console. The panel's token is
+  redacted from both.

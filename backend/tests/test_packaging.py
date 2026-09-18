@@ -14,6 +14,7 @@ Does not require a running iTerm2. Does not mutate the working tree.
 
 import configparser
 import hashlib
+import os
 import subprocess
 import zipfile
 from pathlib import Path
@@ -24,13 +25,23 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 BUILD_SCRIPT = REPO_ROOT / "packaging" / "build-its.sh"
 WEB_DIST_INDEX = REPO_ROOT / "web" / "dist" / "index.html"
 
+REQUIRED = os.environ.get("GIT_ITERM2_REQUIRE_PACKAGING_TEST") == "1"
+"""Set by the CI job that has just built the archive (and therefore
+`web/dist`). Without it, a job that forgot to build the SPA -- which is how
+this test came to never run in CI at all -- would go on skipping in
+silence instead of failing."""
+
 pytestmark = pytest.mark.skipif(
-    not WEB_DIST_INDEX.exists(),
+    not WEB_DIST_INDEX.exists() and not REQUIRED,
     reason="web/dist is not built; run `npm run build` in web/ first",
 )
 
 
 def test_build_its_produces_expected_archive(tmp_path: Path) -> None:
+    assert WEB_DIST_INDEX.exists(), (
+        "GIT_ITERM2_REQUIRE_PACKAGING_TEST=1 but web/dist is missing: "
+        "the job must build the web bundle (or the .its archive) first"
+    )
     out_dir = tmp_path / "dist"
 
     subprocess.run(

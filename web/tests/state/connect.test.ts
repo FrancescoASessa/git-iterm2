@@ -56,8 +56,8 @@ describe('startConnection', () => {
         conflicted: [],
         stash_count: 0,
         theme: null,
-        shell_integration: true,
       },
+      shell_integration: true,
     })
     expect(snapshot.value?.root).toBe('/r')
 

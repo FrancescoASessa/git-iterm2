@@ -1,6 +1,8 @@
 import asyncio
 import builtins
 import contextlib
+import sys
+import types
 from collections.abc import AsyncIterator
 
 import pytest
@@ -226,3 +228,81 @@ async def _record(sink: list, value: object) -> None:  # type: ignore[type-arg]
 
 async def _noop() -> None:
     return None
+
+
+class _FakeFocusMonitor:
+    """Raises from `async_get_next_update`, the way a real `FocusMonitor`
+    does when its connection drops."""
+
+    def __init__(self, connection: object) -> None:
+        self.connection = connection
+
+    async def __aenter__(self) -> "_FakeFocusMonitor":
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> bool:
+        return False
+
+    async def async_get_next_update(self) -> None:
+        raise RuntimeError("focus monitor died")
+
+
+class _FakeVariableMonitor:
+    """Polls forever, and records whether it was cancelled and closed."""
+
+    cancelled = asyncio.Event()
+    exited = asyncio.Event()
+
+    def __init__(self, connection: object, scope: object, name: str, target: str) -> None:
+        self.connection = connection
+
+    async def __aenter__(self) -> "_FakeVariableMonitor":
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> bool:
+        type(self).exited.set()
+        return False
+
+    async def async_get(self) -> None:
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            type(self).cancelled.set()
+            raise
+
+
+async def test_run_cancels_the_path_watcher_when_the_focus_monitor_raises(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`run()`'s production branch used a plain `asyncio.gather`, which does
+    not cancel its sibling when one child raises. With `FocusMonitor` dead,
+    `watch_path` kept polling and enqueueing into a queue whose pump had
+    already been cancelled in the `finally` -- an orphan task holding an
+    open `VariableMonitor` for the rest of the process's life.
+
+    Stubs `iterm2` in `sys.modules` so `run()` takes the real production
+    branch (the injected-`monitors` seam would not exercise it).
+    """
+    _FakeVariableMonitor.cancelled = asyncio.Event()
+    _FakeVariableMonitor.exited = asyncio.Event()
+    fake_iterm2 = types.SimpleNamespace(
+        FocusMonitor=_FakeFocusMonitor,
+        VariableMonitor=_FakeVariableMonitor,
+        VariableScopes=types.SimpleNamespace(SESSION="session"),
+    )
+    monkeypatch.setitem(sys.modules, "iterm2", fake_iterm2)
+
+    session = FakeSession(variables={"path": "/tmp/repo"})
+    app = app_with(session)
+    app.connection = object()  # type: ignore[attr-defined]
+    tracker = ActiveSessionTracker(app, on_path=lambda path, has_session: _noop())
+
+    before = asyncio.all_tasks()
+    with pytest.raises(RuntimeError, match="focus monitor died"):
+        await tracker.run()
+
+    assert _FakeVariableMonitor.cancelled.is_set(), "the path watcher was left running"
+    assert _FakeVariableMonitor.exited.is_set(), "the VariableMonitor was never closed"
+    await asyncio.sleep(0)
+    leftover = asyncio.all_tasks() - before - {asyncio.current_task()}  # type: ignore[arg-type]
+    assert not [task for task in leftover if not task.done()], "a task was left pending"

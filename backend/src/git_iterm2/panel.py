@@ -3,12 +3,12 @@
 import asyncio
 import logging
 import secrets
-from collections.abc import Coroutine, Iterable
 from pathlib import Path
 from typing import Any
 
 from git_iterm2.api.app import create_app, start_server
 from git_iterm2.api.keys import ServerConfig
+from git_iterm2.concurrency import run_concurrently
 from git_iterm2.core.controller import RepoController
 from git_iterm2.iterm.focus import ActiveSessionTracker
 from git_iterm2.iterm.panel import register_panel
@@ -35,44 +35,6 @@ async def get_app(connection: Any) -> Any:
     import iterm2
 
     return await iterm2.async_get_app(connection)
-
-
-async def _run_concurrently(coroutines: Iterable[Coroutine[Any, Any, None]]) -> None:
-    """Run coroutines concurrently. As soon as one finishes -- by returning
-    or raising -- cancel and await the rest, then re-raise that one's
-    exception (if it had one).
-
-    Plain `asyncio.gather` does not cancel siblings on an exception: if
-    `controller.poll_forever()` crashed while `tracker.run()` kept going,
-    the tracker (and the iTerm2 monitors it owns) would run forever behind
-    a server whose caller has already started unwinding, and vice versa.
-    """
-    tasks = [asyncio.ensure_future(coro) for coro in coroutines]
-    try:
-        done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
-    finally:
-        for task in tasks:
-            if not task.done():
-                task.cancel()
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-        for task, result in zip(tasks, results, strict=True):
-            # `done`'s own exception (if any) is re-raised below; this is
-            # only about the *other* task(s), which we just cancelled. A
-            # well-behaved coroutine raises `CancelledError` in response;
-            # anything else (a bug in its own cancellation handling, or a
-            # genuine race where it fails in the same tick it's cancelled)
-            # must not vanish silently just because `return_exceptions=True`
-            # turned it into a plain value here.
-            if (
-                task not in done
-                and isinstance(result, BaseException)
-                and not isinstance(result, asyncio.CancelledError)
-            ):
-                logger.error(
-                    "a concurrently-run coroutine failed while being cancelled", exc_info=result
-                )
-    for task in done:
-        task.result()
 
 
 async def run_panel(connection: Any, *, static_dir: Path | None = DEFAULT_STATIC_DIR) -> None:
@@ -128,7 +90,7 @@ async def run_panel(connection: Any, *, static_dir: Path | None = DEFAULT_STATIC
         await register_panel(connection, url)
         logger.info("panel registered in the toolbelt")
 
-        await _run_concurrently([controller.poll_forever(), tracker.run()])
+        await run_concurrently([controller.poll_forever(), tracker.run()])
     finally:
         await runner.cleanup()
 

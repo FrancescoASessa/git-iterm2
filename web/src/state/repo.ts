@@ -10,10 +10,10 @@ export const connection = signal<WsStatus>('connecting')
 // tell "still loading" from "answered: this is not a repository".
 export const receivedSnapshot = signal(false)
 
-// Remembers the last snapshot's `shell_integration` flag. A `null` snapshot
-// (no repo) carries no flag of its own, so this must survive across it —
-// otherwise the no-repo empty state could never show the Shell Integration
-// hint (the very case it exists for).
+// Whether iTerm2 Shell Integration is reporting the session's directory.
+// It comes from the snapshot message *envelope*, not from the snapshot, so
+// it arrives even when `repo` is null — which is the only case it exists
+// for (no directory means no repository to describe).
 export const shellIntegration = signal(true)
 
 export const hasRepo = computed(() => snapshot.value !== null)
@@ -39,12 +39,13 @@ export const changeCount = computed(() => {
 
 let appliedTheme: string | null = null
 
-export function applySnapshot(next: RepoSnapshot | null): void {
+/** Applies a `snapshot` message. `shellIntegrationAvailable` comes from the
+ * message envelope; it defaults to the backend's own default (`true`) so a
+ * caller that only cares about the repository can leave it out. */
+export function applySnapshot(next: RepoSnapshot | null, shellIntegrationAvailable = true): void {
   snapshot.value = next
   receivedSnapshot.value = true
-  if (next !== null) {
-    shellIntegration.value = next.shell_integration
-  }
+  shellIntegration.value = shellIntegrationAvailable
   const key = JSON.stringify(next?.theme ?? null)
   if (key !== appliedTheme) {
     appliedTheme = key

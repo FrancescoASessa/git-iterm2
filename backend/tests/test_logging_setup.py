@@ -119,3 +119,54 @@ def test_stack_info_is_redacted() -> None:
 
     assert token not in record.stack_info
     assert "<token>" in record.stack_info
+
+
+def test_startup_info_and_errors_reach_the_script_console(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Spec §9 bullet 2: startup info and errors are also printed to the
+    iTerm2 Script Console, which shows the script's stdout/stderr. With only
+    a `RotatingFileHandler` installed and `propagate = False`, nothing
+    reached it at all -- not even `panel.py`'s "panel listening on port N",
+    the one line a user opening the Script Console is looking for.
+    """
+    # A realistic token: a one-character one would redact its own letters
+    # out of every message and prove nothing.
+    configure_logging("super-secret-token", log_dir=tmp_path)
+    logger = logging.getLogger("git_iterm2.test")
+
+    logger.info("panel listening on port %s", 1234)
+    logger.error("could not read the session theme")
+    for handler in logging.getLogger("git_iterm2").handlers:
+        handler.flush()
+
+    console = capsys.readouterr()
+    printed = console.out + console.err
+    assert "panel listening on port 1234" in printed
+    assert "could not read the session theme" in printed
+
+
+def test_the_token_never_reaches_the_script_console(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The console handler is a second sink for the same records, so the
+    redaction filter has to be attached to it too -- the Script Console is
+    shoulder-surfable in a way the log file is not."""
+    token = "super-secret-token"
+    configure_logging(token, log_dir=tmp_path)
+    logger = logging.getLogger("git_iterm2.test")
+
+    logger.info("panel at http://127.0.0.1:1234/?t=%s", token)
+    logger.warning("token=%s in a message", token)
+    logger.error(ValueError(f"obj {token}"))
+    try:
+        raise RuntimeError(f"failed near token {token}")
+    except RuntimeError:
+        logger.exception("boom")
+    for handler in logging.getLogger("git_iterm2").handlers:
+        handler.flush()
+
+    console = capsys.readouterr()
+    printed = console.out + console.err
+    assert token not in printed
+    assert "<token>" in printed

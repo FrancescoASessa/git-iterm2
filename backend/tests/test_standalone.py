@@ -48,7 +48,7 @@ async def test_standalone_serves_api(repo: Path) -> None:
                 await ws.send_str(json.dumps({"type": "auth", "token": "secret"}))
                 message = json.loads((await ws.receive(timeout=5)).data)
                 assert message["type"] == "snapshot"
-                assert message["repo"]["shell_integration"] is True
+                assert message["shell_integration"] is True
     finally:
         proc.terminate()
         await proc.wait()

@@ -4,10 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { App } from '../src/app'
 import * as client from '../src/api/client'
+import { startConnection } from '../src/api/connect'
 import { applySnapshot, connection } from '../src/state/repo'
 import { FALLBACK_THEME } from '../src/theme'
 import { makeSnapshot, resetState } from './helpers'
-import type { RepoSnapshot } from '../src/api/types'
+import type { RepoSnapshot, ServerMessage } from '../src/api/types'
 
 describe('app shell', () => {
   afterEach(() => {
@@ -47,7 +48,6 @@ describe('app shell', () => {
       conflicted: [],
       stash_count: 0,
       theme: null,
-      shell_integration: true,
     }
     expect(snapshot.head.branch).toBe('main')
   })
@@ -79,14 +79,29 @@ describe('app first paint', () => {
 
   it('explains how to enable shell integration when the panel has no path', async () => {
     render(<App />)
-    // Drive it through the real mechanism rather than poking the signal
-    // directly: a repo snapshot with the flag false, then losing the repo
-    // (a null snapshot), which must carry the flag forward rather than
-    // resetting it.
-    applySnapshot(makeSnapshot({ shell_integration: false }))
-    applySnapshot(null)
-    expect(await screen.findByText('Shell Integration not enabled')).toBeInTheDocument()
-    expect(screen.getByText(/Install Shell Integration/)).toBeInTheDocument()
+    // Drive it through the real message the backend emits, delivered over a
+    // real socket into `startConnection`. A session with no readable `path`
+    // has no directory, so the backend has no repository to describe: the
+    // flag rides on the snapshot *envelope*, next to a null `repo`, and
+    // this is the only state production ever reaches with it false.
+    const handle = deliver({ type: 'snapshot', repo: null, shell_integration: false })
+    try {
+      expect(await screen.findByText('Shell Integration not enabled')).toBeInTheDocument()
+      expect(screen.getByText(/Install Shell Integration/)).toBeInTheDocument()
+    } finally {
+      handle.close()
+    }
+  })
+
+  it('shows the plain no-repo empty state when shell integration is working', async () => {
+    render(<App />)
+    const handle = deliver({ type: 'snapshot', repo: null, shell_integration: true })
+    try {
+      expect(await screen.findByText('Not a git repository')).toBeInTheDocument()
+      expect(screen.queryByText('Shell Integration not enabled')).not.toBeInTheDocument()
+    } finally {
+      handle.close()
+    }
   })
 
   it('shows the Changes panel once a repository snapshot arrives', async () => {
@@ -118,3 +133,34 @@ describe('app first paint', () => {
     expect(getBranches).not.toHaveBeenCalled()
   })
 })
+
+type FakeSocket = {
+  onopen: (() => void) | null
+  onmessage: ((event: { data: string }) => void) | null
+  onclose: (() => void) | null
+  close: () => void
+  send: () => void
+}
+
+/** Feeds `message` to the app the way the backend does: through
+ * `startConnection`, over a socket, as JSON — no signal poking. */
+function deliver(message: ServerMessage): { close: () => void } {
+  const socketRef: { current: FakeSocket | null } = { current: null }
+  const handle = startConnection({
+    socketFactory: () => {
+      const fake: FakeSocket = {
+        onopen: null,
+        onmessage: null,
+        onclose: null,
+        close: () => {},
+        send: () => {},
+      }
+      socketRef.current = fake
+      return fake as unknown as WebSocket
+    },
+    timer: (() => 0) as unknown as typeof setTimeout,
+  })
+  socketRef.current?.onopen?.()
+  socketRef.current?.onmessage?.({ data: JSON.stringify(message) })
+  return handle
+}

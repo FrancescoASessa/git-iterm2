@@ -22,7 +22,6 @@ export function makeSnapshot(overrides: Partial<RepoSnapshot> = {}): RepoSnapsho
     conflicted: [],
     stash_count: 0,
     theme: null,
-    shell_integration: true,
     ...overrides,
   }
 }
@@ -32,8 +31,9 @@ export function resetState(): void {
   // applySnapshot flips receivedSnapshot; put it back so a test starts in the
   // pre-first-snapshot state the app really boots in.
   receivedSnapshot.value = false
-  // applySnapshot(null) leaves shellIntegration untouched (a null snapshot
-  // carries no flag); reset it explicitly so tests start from the default.
+  // applySnapshot's `shellIntegrationAvailable` defaults to true, so the
+  // line above already restored it; assert-by-assignment keeps this honest
+  // if that default ever changes.
   shellIntegration.value = true
   connection.value = 'open'
   runningOps.value = []

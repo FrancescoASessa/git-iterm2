@@ -1,0 +1,159 @@
+name: Tests
+
+# The single definition of "this branch is green": backend, web, end-to-end
+# and packaging. Called by `ci.yml` (pushes and pull requests) and by
+# `release.yml` (before a `v*` tag publishes anything), so a release is
+# gated by exactly the same checks a pull request is -- not by a copy of
+# them that can drift.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v10.1.0
+
+      - name: Install dependencies
+        working-directory: backend
+        run: uv sync
+
+      - name: Lint (ruff check)
+        working-directory: backend
+        run: uv run ruff check src tests
+
+      - name: Lint (ruff format)
+        working-directory: backend
+        run: uv run ruff format --check src tests
+
+      - name: Type check (mypy)
+        working-directory: backend
+        run: uv run mypy src
+
+      - name: Test (pytest)
+        working-directory: backend
+        run: uv run pytest -q
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Lint
+        working-directory: web
+        run: npm run lint
+
+      - name: Format check
+        working-directory: web
+        run: npm run format:check
+
+      - name: Type check
+        working-directory: web
+        run: npm run typecheck
+
+      - name: Generated API types are current
+        working-directory: web
+        run: npm run check:types-current
+
+      - name: Unit tests
+        working-directory: web
+        run: npm run test
+
+      - name: Build
+        working-directory: web
+        run: npm run build
+
+  e2e:
+    needs: web
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v10.1.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # global-setup.ts spawns `uv run python -m git_iterm2.standalone` and
+      # gives it a 20s timeout to print its listen URL. Syncing the backend
+      # venv here, rather than letting the first `uv run` do it lazily, keeps
+      # that first-boot cost out of the timeout window.
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync
+
+      - name: Install web dependencies and build
+        working-directory: web
+        run: npm ci && npm run build
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+
+      - name: Run e2e tests
+        working-directory: web
+        run: npm run e2e
+
+  package:
+    needs: web
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: astral-sh/setup-uv@v10.1.0
+
+      # No --skip-web-build: this is the job's only SPA build. It runs
+      # `npm ci && npm run build` internally (see packaging/build-its.sh),
+      # so this job never builds the SPA a second time.
+      - name: Build the .its archive
+        run: bash packaging/build-its.sh
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync
+
+      # `tests/test_packaging.py` runs the build script end to end and
+      # inspects the archive. It needs a prebuilt `web/dist`, which the step
+      # above has just produced -- which is why it runs here and not in the
+      # `backend` job, where it would (and did) skip in silence.
+      # GIT_ITERM2_REQUIRE_PACKAGING_TEST refuses that skip: if the bundle
+      # is ever missing here, the job fails instead of passing vacuously.
+      - name: Test the packaging pipeline
+        working-directory: backend
+        env:
+          GIT_ITERM2_REQUIRE_PACKAGING_TEST: "1"
+        run: uv run pytest -q tests/test_packaging.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GitPanel.its
+          path: dist/GitPanel.its*
+          if-no-files-found: error

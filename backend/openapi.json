@@ -804,11 +804,6 @@
             "title": "Root",
             "type": "string"
           },
-          "shell_integration": {
-            "default": true,
-            "title": "Shell Integration",
-            "type": "boolean"
-          },
           "staged": {
             "items": {
               "$ref": "#/components/schemas/FileChange"
@@ -876,8 +871,7 @@
           "untracked",
           "conflicted",
           "stash_count",
-          "theme",
-          "shell_integration"
+          "theme"
         ],
         "title": "RepoSnapshot",
         "type": "object"
@@ -894,6 +888,11 @@
               }
             ]
           },
+          "shell_integration": {
+            "default": true,
+            "title": "Shell Integration",
+            "type": "boolean"
+          },
           "type": {
             "const": "snapshot",
             "default": "snapshot",
@@ -903,7 +902,8 @@
         },
         "required": [
           "type",
-          "repo"
+          "repo",
+          "shell_integration"
         ],
         "title": "SnapshotMessage",
         "type": "object"

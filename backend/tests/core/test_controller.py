@@ -105,22 +105,38 @@ async def test_set_theme_is_included_in_snapshot(repo: Path) -> None:
     assert controller.snapshot.theme == theme
 
 
-async def test_shell_integration_flag_reaches_the_snapshot(repo: Path) -> None:
+async def test_shell_integration_flag_rides_on_the_snapshot_envelope() -> None:
+    """The flag must travel on the `SnapshotMessage` envelope, not inside
+    `RepoSnapshot`.
+
+    The only state production ever puts the controller in when the flag is
+    false is *no active path at all*: `panel.py`'s `on_path` calls
+    `set_active_path(None)` and `set_shell_integration(False)` together,
+    because a session with no readable `path` variable has no directory to
+    resolve a repository from. `refresh()` then has no snapshot to put the
+    flag inside, so a flag that only existed inside `RepoSnapshot` could
+    never be delivered at all.
+    """
     controller = RepoController()
-    await controller.set_active_path(repo)
-    assert controller.snapshot is not None
-    assert controller.snapshot.shell_integration is True
+    recorder = Recorder()
+    controller.subscribe(recorder)
 
     await controller.set_shell_integration(False)
-    assert controller.snapshot is not None
-    assert controller.snapshot.shell_integration is False
+
+    message = await recorder.wait_for(is_snapshot)
+    assert message.repo is None  # exactly the state production reaches
+    assert message.shell_integration is False
+    assert controller.shell_integration is False
 
     # And back again: the no-op guard in `set_shell_integration` compares
     # against the *current* value, not just the initial default, so it must
     # not silently pin the flag once it has gone false.
+    recorder.messages.clear()
     await controller.set_shell_integration(True)
-    assert controller.snapshot is not None
-    assert controller.snapshot.shell_integration is True
+
+    message = await recorder.wait_for(is_snapshot)
+    assert message.shell_integration is True
+    assert controller.shell_integration is True
 
 
 async def test_remote_op_success(remote_pair: tuple[Path, Path]) -> None:

@@ -47,6 +47,10 @@ class RepoController:
         return self._snapshot
 
     @property
+    def shell_integration(self) -> bool:
+        return self._shell_integration
+
+    @property
     def listener_count(self) -> int:
         return len(self._listeners)
 
@@ -90,14 +94,20 @@ class RepoController:
         snapshot: RepoSnapshot | None = None
         if paths is not None:
             try:
-                snapshot = await read_snapshot(paths, self._theme, self._shell_integration)
+                snapshot = await read_snapshot(paths, self._theme)
             except (GitError, OSError):
                 logger.warning("could not read snapshot for %s", paths.root, exc_info=True)
         if paths is not self._paths:
             return
         if force or snapshot != self._snapshot:
             self._snapshot = snapshot
-            await self._emit(SnapshotMessage(repo=snapshot))
+            await self._emit(self.snapshot_message())
+
+    def snapshot_message(self) -> SnapshotMessage:
+        """The current state as it goes over the wire. `shell_integration`
+        rides on the envelope, so it reaches the UI even when `repo` is
+        `None` -- which is exactly when it matters."""
+        return SnapshotMessage(repo=self._snapshot, shell_integration=self._shell_integration)
 
     def require_paths(self) -> RepoPaths:
         if self._paths is None:

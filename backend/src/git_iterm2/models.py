@@ -49,7 +49,6 @@ class RepoSnapshot(ApiModel):
     conflicted: list[FileChange]
     stash_count: int
     theme: Theme | None = None
-    shell_integration: bool = True
 
 
 class DiffLine(ApiModel):
@@ -210,6 +209,13 @@ class AuthMessage(ApiModel):
 class SnapshotMessage(ApiModel):
     type: Literal["snapshot"] = "snapshot"
     repo: RepoSnapshot | None
+    shell_integration: bool = True
+    """Whether iTerm2 Shell Integration is reporting the active session's
+    directory. It lives on the envelope rather than inside `RepoSnapshot`
+    because the case it exists for is precisely the one with *no* snapshot:
+    a session whose `path` variable is unreadable has no directory, hence no
+    repository, hence a null `repo`. Inside `RepoSnapshot` the flag could
+    never be delivered when it mattered."""
 
 
 class OpProgressMessage(ApiModel):

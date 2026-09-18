@@ -4,6 +4,8 @@ import logging
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
+from git_iterm2.concurrency import run_concurrently
+
 logger = logging.getLogger(__name__)
 
 _DRAIN_TIMEOUT = 2.0
@@ -150,6 +152,10 @@ class ActiveSessionTracker:
                     await self.enqueue(self.current_session())
 
         try:
-            await asyncio.gather(watch_focus(), watch_path())
+            # Not a plain `asyncio.gather`: that does not cancel its sibling
+            # when one child raises, so a dead `FocusMonitor` would leave
+            # `watch_path` polling an open `VariableMonitor` forever and
+            # enqueueing into a queue whose pump is cancelled just below.
+            await run_concurrently([watch_focus(), watch_path()])
         finally:
             await self._stop_pump(pump)

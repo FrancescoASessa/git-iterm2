@@ -309,11 +309,6 @@ export interface components {
             head: components["schemas"]["Head"];
             /** Root */
             root: string;
-            /**
-             * Shell Integration
-             * @default true
-             */
-            shell_integration: boolean;
             /** Staged */
             staged: components["schemas"]["FileChange"][];
             /** Stash Count */
@@ -334,6 +329,11 @@ export interface components {
         /** SnapshotMessage */
         SnapshotMessage: {
             repo: components["schemas"]["RepoSnapshot"] | null;
+            /**
+             * Shell Integration
+             * @default true
+             */
+            shell_integration: boolean;
             /**
              * Type
              * @default snapshot

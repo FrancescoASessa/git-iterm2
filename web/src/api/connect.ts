@@ -12,7 +12,7 @@ export function startConnection(options: WsOptions = {}): { close: () => void } 
         connection.value = status
       },
       onMessage: (message) => {
-        if (message.type === 'snapshot') applySnapshot(message.repo)
+        if (message.type === 'snapshot') applySnapshot(message.repo, message.shell_integration)
         else if (message.type === 'op_progress') handleOpProgress(message)
         else handleOpDone(message)
       },

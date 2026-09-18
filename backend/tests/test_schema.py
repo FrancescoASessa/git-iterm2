@@ -46,4 +46,7 @@ def test_message_discriminators_are_required() -> None:
         assert "type" in schemas[name]["required"], name
     assert "orig_path" in schemas["FileChange"]["required"]
     assert "theme" in schemas["RepoSnapshot"]["required"]
-    assert "shell_integration" in schemas["RepoSnapshot"]["required"]
+    # On the envelope, not inside `RepoSnapshot`: it must be delivered
+    # alongside a null `repo`, which is the only case it exists for.
+    assert "shell_integration" in schemas["SnapshotMessage"]["required"]
+    assert "shell_integration" not in schemas["RepoSnapshot"].get("properties", {})

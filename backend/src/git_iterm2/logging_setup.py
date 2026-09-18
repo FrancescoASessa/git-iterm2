@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from collections.abc import Mapping
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -10,6 +11,13 @@ MAX_BYTES = 1_000_000
 BACKUP_COUNT = 3
 
 _FALLBACK_LEVEL = logging.INFO
+
+_CONSOLE_LEVEL = logging.INFO
+"""Floor for the iTerm2 Script Console sink (spec §9: startup info and
+errors are printed there too). Kept at INFO independently of
+`GIT_ITERM2_LOG_LEVEL` so turning on DEBUG for the log file does not bury
+the one line a user opens the Console to find -- "panel listening on port
+N" -- under per-poll chatter."""
 
 
 class _RedactToken(logging.Filter):
@@ -77,12 +85,27 @@ def configure_logging(token: str, log_dir: Path | None = None) -> None:
     for handler in list(logger.handlers):
         logger.removeHandler(handler)
         handler.close()
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
     handler = RotatingFileHandler(
         directory / LOG_FILE, maxBytes=MAX_BYTES, backupCount=BACKUP_COUNT, encoding="utf-8"
     )
-    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    handler.setFormatter(formatter)
     handler.addFilter(_RedactToken(token))
     logger.addHandler(handler)
+
+    # `propagate = False` below means the root logger's handlers never see
+    # these records, so without a sink of our own nothing at all reaches the
+    # iTerm2 Script Console, which shows the script's stdout/stderr. A
+    # second handler carrying the same redaction filter puts startup info
+    # and errors there (port only, never the token -- the Console is
+    # shoulder-surfable in a way `~/Library/Logs` is not). `sys.stderr` is
+    # resolved at call time rather than captured at import time.
+    console = logging.StreamHandler(sys.stderr)
+    console.setLevel(_CONSOLE_LEVEL)
+    console.setFormatter(formatter)
+    console.addFilter(_RedactToken(token))
+    logger.addHandler(console)
+
     logger.propagate = False
 
     level_name = os.environ.get("GIT_ITERM2_LOG_LEVEL", "INFO").upper()

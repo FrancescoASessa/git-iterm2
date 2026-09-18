@@ -19,3 +19,7 @@ class ServerConfig:
 
 CONTROLLER_KEY = web.AppKey("controller", RepoController)
 CONFIG_KEY = web.AppKey("config", ServerConfig)
+WEBSOCKETS_KEY = web.AppKey("websockets", set[web.WebSocketResponse])
+"""Every live websocket, so shutdown can close them. `ws.py`'s receive loop
+never returns on its own, and the toolbelt web view holds one open for the
+panel's entire life."""

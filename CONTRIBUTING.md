@@ -34,8 +34,9 @@ no HTTP/iTerm2 knowledge) → `git/` (pure git CLI wrapper, no iTerm2/HTTP knowl
 
 ## Quality gates
 
-CI (`.github/workflows/ci.yml`) runs on every push and pull request (tags are excluded —
-those go through `release.yml` instead):
+The gates live in one reusable workflow, `.github/workflows/tests.yml`. `ci.yml` calls it
+on every push and pull request; `release.yml` calls the same workflow on a `v*` tag and
+publishes nothing unless it passes, so a release is gated by exactly these checks:
 
 **Backend** (macOS and Ubuntu), from `backend/`:
 
@@ -61,9 +62,15 @@ those go through `release.yml` instead):
     npx playwright install --with-deps chromium
     npm run e2e
 
-**Packaging** — the `.its` archive must build cleanly:
+**Packaging** (macOS) — the `.its` archive must build cleanly, and the archive it produces
+is then inspected by `backend/tests/test_packaging.py`:
 
     bash packaging/build-its.sh
+    cd backend && GIT_ITERM2_REQUIRE_PACKAGING_TEST=1 uv run pytest -q tests/test_packaging.py
+
+That test needs a prebuilt `web/dist` and skips without one (so an ordinary `pytest -q` run
+doesn't silently pay for a web build). `GIT_ITERM2_REQUIRE_PACKAGING_TEST=1` refuses the
+skip, which is what keeps the packaging job from passing vacuously.
 
 `iterm/` (the code that actually talks to the iTerm2 API) has no automated coverage — iTerm2
 doesn't run in CI. It's covered by the manual checklist in `docs/MANUAL-CHECKS.md`, which a

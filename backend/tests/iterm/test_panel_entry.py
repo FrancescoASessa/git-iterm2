@@ -1,5 +1,5 @@
 import asyncio
-import logging
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -78,6 +78,51 @@ async def test_panel_reports_no_repo_outside_a_repository(
         await asyncio.gather(task, return_exceptions=True)
 
 
+async def test_shell_integration_hint_reaches_the_ui_without_a_repo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The whole point of the flag is the case where there is *no* repo.
+
+    `run_panel`'s `on_path` sets `shell_integration=False` exactly when it
+    also calls `set_active_path(None)` -- a session with no readable `path`
+    variable has no directory to resolve a repository from. The controller
+    therefore has no snapshot to put the flag inside, so it must ride on the
+    `snapshot` message *envelope*, next to a null `repo`, or the UI can only
+    ever show "Not a git repository" -- the exact confusion this feature
+    exists to remove.
+
+    Driven through the real entry point rather than by poking the
+    controller: the unreachable combination (a repo path *and* the flag
+    false) is what hid this for so long.
+    """
+    session = FakeSession(variables={})  # a session, but no readable `path`
+    registered = asyncio.Event()
+    registered_urls: list[str] = []
+
+    async def fake_register(connection: object, url: str) -> None:
+        registered_urls.append(url)
+        registered.set()
+
+    monkeypatch.setattr(panel, "register_panel", fake_register)
+    monkeypatch.setattr(panel, "get_app", lambda connection: _ready(app_with(session)))
+    monkeypatch.setattr(panel, "LOG_DIR", tmp_path)
+
+    task = asyncio.create_task(panel.run_panel(FakeConnection(), static_dir=None))
+    try:
+        await asyncio.wait_for(registered.wait(), timeout=5.0)
+        base, _, token = registered_urls[0].partition("/?t=")
+        async with aiohttp.ClientSession() as http:  # noqa: SIM117
+            async with http.ws_connect(f"{base}/ws") as ws:
+                await ws.send_str(json.dumps({"type": "auth", "token": token}))
+                message = json.loads((await ws.receive(timeout=5.0)).data)
+        assert message["type"] == "snapshot"
+        assert message["repo"] is None
+        assert message["shell_integration"] is False
+    finally:
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+
 async def test_startup_apply_is_bounded_by_a_timeout(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -146,57 +191,6 @@ async def test_cleanup_runs_even_if_something_fails_after_the_server_starts(
     assert ports
     with pytest.raises(OSError):
         await asyncio.open_connection("127.0.0.1", ports[0])
-
-
-async def test_run_concurrently_cancels_the_sibling_when_one_raises() -> None:
-    """Plain `asyncio.gather` does not cancel siblings on an exception: if
-    `poll_forever` raised while `tracker.run()` kept going, the tracker (and
-    its iTerm2 monitors) would run forever behind a server that already
-    unwound via `runner.cleanup()`. `_run_concurrently` must cancel and await
-    whichever coroutine is still running as soon as the other ends."""
-    sibling_cancelled = asyncio.Event()
-
-    async def raises() -> None:
-        await asyncio.sleep(0)
-        raise RuntimeError("boom")
-
-    async def forever() -> None:
-        try:
-            await asyncio.Event().wait()
-        except asyncio.CancelledError:
-            sibling_cancelled.set()
-            raise
-
-    with pytest.raises(RuntimeError, match="boom"):
-        await panel._run_concurrently([raises(), forever()])
-
-    assert sibling_cancelled.is_set()
-
-
-async def test_run_concurrently_logs_if_the_cancelled_sibling_raises_something_else(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """`asyncio.gather(..., return_exceptions=True)`'s result was never
-    inspected: if the sibling being cancelled raised something other than
-    `CancelledError` (e.g. a bug in its own cancellation handling, or a
-    genuine race where it fails in the same tick it's cancelled), that
-    exception vanished with no log line at all."""
-
-    async def raises() -> None:
-        await asyncio.sleep(0)
-        raise RuntimeError("boom")
-
-    async def misbehaves_on_cancel() -> None:
-        try:
-            await asyncio.Event().wait()
-        except asyncio.CancelledError:
-            raise RuntimeError("cleanup blew up") from None
-
-    caplog.set_level(logging.ERROR, logger="git_iterm2.panel")
-    with pytest.raises(RuntimeError, match="boom"):
-        await panel._run_concurrently([raises(), misbehaves_on_cancel()])
-
-    assert "cleanup blew up" in caplog.text
 
 
 _BLOCK_ITERM2_SNIPPET = """

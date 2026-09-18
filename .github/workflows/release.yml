@@ -9,8 +9,21 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: macos-latest
+  # Nothing is published until the branch is green. `ci.yml` ignores `v*`
+  # tags and this workflow had no test job at all, so a tag used to build
+  # and publish a release without a single check having run: a broken
+  # commit could ship to everyone who installs it. Calling the same
+  # reusable workflow `ci.yml` calls means a release is gated by exactly
+  # the checks a pull request is -- including the packaging test -- with no
+  # second copy of them to drift.
+  tests:
+    uses: ./.github/workflows/tests.yml
+
+  # Its own job, running alongside `tests` rather than after it: a
+  # mistyped tag is knowable in seconds and must not cost a full suite
+  # before it is reported. `release` needs both.
+  check-version:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -42,6 +55,12 @@ jobs:
           fi
 
           echo "Tag ${GITHUB_REF_NAME} matches backend/pyproject.toml version ${PYPROJECT_VERSION}."
+
+  release:
+    needs: [check-version, tests]
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
