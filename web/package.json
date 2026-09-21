@@ -23,7 +23,7 @@
     "@eslint/js": "^9.12.0",
     "@playwright/test": "^1.48.0",
     "@preact/preset-vite": "^2.9.0",
-    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/preact": "^3.2.4",
     "@testing-library/user-event": "^14.5.2",
     "@types/node": "^22.20.3",
