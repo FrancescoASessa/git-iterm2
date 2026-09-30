@@ -9,12 +9,25 @@ on:
   # `v*` tags stay excluded on purpose: `release.yml` calls the very same
   # reusable workflow before it publishes, so a tag is fully gated without
   # running every job twice.
+  #
+  # `paths-ignore`: a change that only touches prose (root Markdown, docs/,
+  # .claude/) cannot change a test result, so it does not start the macOS
+  # matrix. Tags are unaffected -- path filters do not apply to tag pushes,
+  # and `release.yml` runs the suite itself.
   push:
     branches:
       - "**"
     tags-ignore:
       - "v*"
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
+      - ".claude/**"
   pull_request:
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
+      - ".claude/**"
 
 permissions:
   contents: read
